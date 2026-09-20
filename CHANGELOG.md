@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 - 2026-09-20
+
+- Re-enabling Registry and Startup folder entries no longer depends only on a BootLens backup.
+- Disabled entries can be restored from their saved command or `.bootlens-disabled` file when the backup record is unavailable.
+- Restore failures now explain when the disabled entry is missing required information.
+
 ## 0.2.1 - 2026-09-20
 
 - Startup rows update immediately after a verified change without forcing a full scan.

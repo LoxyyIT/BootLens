@@ -51,16 +51,16 @@ public sealed class WindowsStartupModifier : IStartupModifier
         if (enable)
         {
             using var stored = OpenBackup(backupRoot, entry);
-            var command = stored?.GetValue("Command")?.ToString();
-            var source = stored?.GetValue("Source")?.ToString();
+            var command = stored?.GetValue("Command")?.ToString() ?? entry.CommandLine;
+            var source = stored?.GetValue("Source")?.ToString() ?? entry.SourceLocation;
             var identifier = stored?.GetValue("Identifier")?.ToString() ?? entry.Identifier;
-            if (command is null || source is null) return OperationResult.Failure("Non è stato trovato il backup reversibile di BootLens per questo elemento.");
+            if (string.IsNullOrWhiteSpace(command) || string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(identifier)) return OperationResult.Failure("L'elemento disabilitato non contiene abbastanza informazioni per essere riabilitato.");
             using var sourceKey = OpenSourceKey(source, writable: true);
             if (sourceKey is null) return OperationResult.Failure("La posizione originale del Registro non è scrivibile.");
             sourceKey.SetValue(identifier, command);
             var restored = sourceKey.GetValue(identifier)?.ToString() == command;
             if (restored) DeleteBackup(backupRoot, backupName, entry.Identifier);
-            return restored ? new OperationResult(true, true, "Elemento del Registro riabilitato.") : OperationResult.Failure("La verifica del Registro non è riuscita dopo il ripristino.");
+            return restored ? new OperationResult(true, true, stored is null ? "Elemento del Registro riabilitato e verificato." : "Elemento del Registro riabilitato.") : OperationResult.Failure("La verifica del Registro non è riuscita dopo il ripristino.");
         }
 
         using var sourceKeyToDisable = OpenSourceKey(entry.SourceLocation, writable: true);
@@ -86,9 +86,9 @@ public sealed class WindowsStartupModifier : IStartupModifier
         if (enable)
         {
             using var stored = OpenBackup(backupRoot, entry);
-            var disabledPath = stored?.GetValue("DisabledPath")?.ToString();
+            var disabledPath = stored?.GetValue("DisabledPath")?.ToString() ?? originalPath + ".bootlens-disabled";
             var storedOriginal = stored?.GetValue("OriginalPath")?.ToString() ?? originalPath;
-            if (string.IsNullOrWhiteSpace(disabledPath) || !File.Exists(disabledPath)) return OperationResult.Failure("Non è stato trovato il file disabilitato da ripristinare.");
+            if (!File.Exists(disabledPath)) return OperationResult.Failure("Non è stato trovato il collegamento disabilitato da ripristinare.");
             if (File.Exists(storedOriginal)) return OperationResult.Failure("Il file originale esiste già: il ripristino è stato fermato per evitare sovrascritture.");
             File.Move(disabledPath, storedOriginal);
             var restored = File.Exists(storedOriginal) && !File.Exists(disabledPath);
