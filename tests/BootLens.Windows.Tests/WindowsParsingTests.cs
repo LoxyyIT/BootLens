@@ -14,4 +14,13 @@ public sealed class WindowsParsingTests
         Assert.NotNull(actual);
         Assert.EndsWith(expected.Replace("%WINDIR%", Environment.GetFolderPath(Environment.SpecialFolder.Windows)), actual, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task Startup_scan_reports_valid_authenticode_signatures()
+    {
+        var entries = await new WindowsStartupScanner().ScanAsync();
+
+        Assert.NotEmpty(entries);
+        Assert.Contains(entries, entry => entry.IsSigned);
+    }
 }

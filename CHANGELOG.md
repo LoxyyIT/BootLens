@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5 - 2026-09-20
+
+- Signature status now uses Windows Authenticode verification instead of always reporting files as unsigned.
+- The signer certificate is used when available to identify the publisher.
+- Access-denied registry surfaces no longer stop the rest of the startup scan.
+
 ## 0.2.4 - 2026-09-20
 
 - The change log now includes the entry name, action type, mechanism, publisher, source, state transition, path, command, result and timestamp.

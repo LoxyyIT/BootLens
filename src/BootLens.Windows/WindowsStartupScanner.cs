@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Security;
 using System.Security.Cryptography;
 using System.Collections.Concurrent;
 using Microsoft.Win32;
@@ -102,6 +103,7 @@ public sealed class WindowsStartupScanner : IStartupScanner
             foreach (var target in targets.Skip(1)) target.Dispose();
         }
         catch (UnauthorizedAccessException) { }
+        catch (SecurityException) { }
         catch (IOException) { }
     }
 
@@ -282,9 +284,10 @@ public sealed class WindowsStartupScanner : IStartupScanner
             if (InspectionCache.TryGetValue(path, out var cached) && cached.Length == fileInfo.Length && cached.LastWriteUtcTicks == fileInfo.LastWriteTimeUtc.Ticks) return cached.Result;
             var info = FileVersionInfo.GetVersionInfo(path);
             var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
-            var publisher = info.CompanyName;
+            var signature = AuthenticodeVerifier.Verify(path);
+            var publisher = signature.Publisher ?? info.CompanyName;
             var microsoft = publisher?.Contains("Microsoft", StringComparison.OrdinalIgnoreCase) == true;
-            var result = new FileInspection(info.FileName, publisher, info.FileDescription, info.FileVersion, false, microsoft, microsoft, false) with { Sha256 = hash };
+            var result = new FileInspection(info.FileName, publisher, info.FileDescription, info.FileVersion, signature.IsValid, microsoft, microsoft, false) with { Sha256 = hash };
             InspectionCache[path] = new CachedInspection(fileInfo.Length, fileInfo.LastWriteTimeUtc.Ticks, result);
             return result;
         }

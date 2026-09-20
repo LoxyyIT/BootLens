@@ -122,9 +122,9 @@ A portable Windows x64 package is available from the [GitHub Releases](https://g
     dotnet restore BootLens.sln
     dotnet build BootLens.sln -c Release
     dotnet test BootLens.sln -c Release --no-build
-    .\scripts\publish.ps1 -Version 0.2.4
+    .\scripts\publish.ps1 -Version 0.2.5
 
-The publish script creates artifacts/BootLens-0.2.4-win-x64.zip. An installer EXE is created when Inno Setup 6 is installed on the build machine. The app targets net10.0-windows, requests administrator rights at launch and the portable publish is self-contained for win-x64.
+The publish script creates artifacts/BootLens-0.2.5-win-x64.zip. An installer EXE is created when Inno Setup 6 is installed on the build machine. The app targets net10.0-windows, requests administrator rights at launch and the portable publish is self-contained for win-x64.
 
 ## Architecture
 
