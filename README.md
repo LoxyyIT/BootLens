@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/LoxyyIT/BootLens">GitHub</a> ·
-  <a href="docs/">Project website</a> ·
+  <a href="https://loxyyit.github.io/BootLens">Project website</a> ·
   <a href="CONTRIBUTING.md">Contribute</a> ·
   <a href="SECURITY.md">Security</a>
 </p>
