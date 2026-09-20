@@ -92,11 +92,35 @@ public sealed class SqliteBootLensRepository : IBootLensRepository
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT id,name,created_utc FROM snapshots ORDER BY created_utc DESC";
-        var snapshots = new List<Snapshot>();
+        command.CommandText = "SELECT s.id,s.name,s.created_utc,e.entry_id,e.display_name,e.mechanism,e.state,e.publisher,e.executable_path,e.command_line,e.is_signed,e.is_microsoft,e.is_critical,e.is_broken FROM snapshots s LEFT JOIN snapshot_entries e ON e.snapshot_id=s.id ORDER BY s.created_utc DESC";
+        var snapshots = new Dictionary<long, Snapshot>();
+        var entries = new Dictionary<long, List<StartupEntry>>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken)) snapshots.Add(new Snapshot { Id = reader.GetInt64(0), Name = reader.GetString(1), CreatedUtc = DateTimeOffset.Parse(reader.GetString(2)), Entries = [] });
-        return snapshots;
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var snapshotId = reader.GetInt64(0);
+            if (!snapshots.ContainsKey(snapshotId))
+            {
+                snapshots[snapshotId] = new Snapshot { Id = snapshotId, Name = reader.GetString(1), CreatedUtc = DateTimeOffset.Parse(reader.GetString(2)), Entries = [] };
+                entries[snapshotId] = [];
+            }
+            if (reader.IsDBNull(3)) continue;
+            entries[snapshotId].Add(new StartupEntry
+            {
+                Id = reader.GetString(3),
+                DisplayName = reader.GetString(4),
+                Mechanism = (StartupMechanism)reader.GetInt32(5),
+                State = (StartupState)reader.GetInt32(6),
+                Publisher = ReadString(reader, 7),
+                ExecutablePath = ReadString(reader, 8),
+                CommandLine = ReadString(reader, 9),
+                IsSigned = reader.GetInt32(10) == 1,
+                IsMicrosoft = reader.GetInt32(11) == 1,
+                IsCritical = reader.GetInt32(12) == 1,
+                IsBroken = reader.GetInt32(13) == 1
+            });
+        }
+        return snapshots.Values.Select(snapshot => snapshot with { Entries = entries[snapshot.Id] }).ToArray();
     }
 
     public async Task SaveChangesAsync(IReadOnlyCollection<StartupChange> changes, CancellationToken cancellationToken = default)

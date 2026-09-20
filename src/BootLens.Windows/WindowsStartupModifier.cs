@@ -136,7 +136,14 @@ public sealed class WindowsStartupModifier : IStartupModifier
         var originalTrigger = stored?.GetValue("OriginalTrigger")?.ToString() ?? (entry.Trigger is "Disabled" or null ? "Auto" : entry.Trigger);
         var startValue = enable ? TriggerToScStart(originalTrigger) : "disabled";
         var result = RunTool("sc.exe", ["config", entry.Identifier, "start=", startValue], cancellationToken);
-        if (result.ExitCode != 0) return OperationResult.Failure($"Service Control Manager non ha applicato la modifica: {FirstLine(result.Error, result.Output)}");
+        if (result.ExitCode != 0)
+        {
+            if (result.Output.Contains("ERROR 5", StringComparison.OrdinalIgnoreCase) || result.Error.Contains("ERROR 5", StringComparison.OrdinalIgnoreCase) || result.Output.Contains(" 5:", StringComparison.OrdinalIgnoreCase) || result.Error.Contains(" 5:", StringComparison.OrdinalIgnoreCase) || result.Output.Contains("Accesso negato", StringComparison.OrdinalIgnoreCase) || result.Error.Contains("Accesso negato", StringComparison.OrdinalIgnoreCase) || result.Output.Contains("Access is denied", StringComparison.OrdinalIgnoreCase) || result.Error.Contains("Access is denied", StringComparison.OrdinalIgnoreCase))
+            {
+                return OperationResult.Failure("Windows ha negato l'accesso a questo servizio. Potrebbe essere protetto o non consentire modifiche anche con privilegi amministrativi.");
+            }
+            return OperationResult.Failure($"Service Control Manager non ha applicato la modifica: {FirstLine(result.Error, result.Output)}");
+        }
         var expected = enable ? TriggerToRegistryValue(originalTrigger) : 4;
         var verified = serviceKey.GetValue("Start") is int current && current == expected;
         if (verified && enable) DeleteBackup(backupRoot, backupName, entry.Identifier);

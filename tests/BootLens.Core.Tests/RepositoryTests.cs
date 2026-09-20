@@ -21,7 +21,10 @@ public sealed class RepositoryTests
             await repository.SaveBootMeasurementAsync(new BootMeasurement { StartedUtc = DateTimeOffset.UtcNow, DurationSeconds = 12.5, ConfigurationFingerprint = "fingerprint" });
             Assert.Single(await repository.GetLatestEntriesAsync());
             Assert.Equal("it", await repository.GetSettingAsync("language"));
-            Assert.Single(await repository.GetSnapshotsAsync());
+            var snapshots = await repository.GetSnapshotsAsync();
+            Assert.Single(snapshots);
+            Assert.Single(snapshots[0].Entries);
+            Assert.Equal("test", snapshots[0].Entries[0].Id);
             Assert.Single(await repository.GetBootMeasurementsAsync());
         }
         finally

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 - 2026-09-20
+
+- Startup rows update immediately after a verified change without forcing a full scan.
+- Snapshot entries are loaded correctly and can be restored from the Snapshots page.
+- Service access-denied responses now explain when Windows protects the service.
+- Snapshot wording and actions are clearer in the interface.
+
 ## 0.2.0 - 2026-09-20
 
 - Startup changes update immediately in the list and are verified again after the refresh.

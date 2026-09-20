@@ -15,7 +15,7 @@ Installer: FAIL - Inno Setup compiler is not installed locally
 Community API local deployment: NOT PART OF CURRENT PRODUCT - Community temporarily disabled
 Community Docker deployment: NOT RUN - Community is disabled and Docker is not installed locally
 Online publication: PASS - source pushed to the public GitHub repository
-GitHub release: PASS - v0.2.0 portable ZIP and self-contained EXE published
+GitHub release: PASS - v0.2.0 portable ZIP and self-contained EXE published; v0.2.1 prepared locally
 ```
 
 ## Known limitations

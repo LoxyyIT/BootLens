@@ -179,6 +179,22 @@ public sealed class LocalizationService
         ((Dictionary<string, string>)Resources["fr"])["CommunityOffHint"] = "Les fonctions Community sont temporairement désactivées et arriveront dans une future version.";
         ((Dictionary<string, string>)Resources["fr"])["CommunityHint"] = "Les fonctions Community ne sont pas encore disponibles. Elles sont temporairement désactivées et prévues pour une future version.";
         ((Dictionary<string, string>)Resources["fr"])["ComingSoon"] = "Coming soon…";
+        ((Dictionary<string, string>)Resources["en"])["RestoreSnapshot"] = "Restore snapshot";
+        ((Dictionary<string, string>)Resources["it"])["RestoreSnapshot"] = "Ripristina snapshot";
+        ((Dictionary<string, string>)Resources["es"])["RestoreSnapshot"] = "Restaurar instantánea";
+        ((Dictionary<string, string>)Resources["fr"])["RestoreSnapshot"] = "Restaurer l’instantané";
+        ((Dictionary<string, string>)Resources["en"])["NoSnapshotChanges"] = "This snapshot has no applicable changes.";
+        ((Dictionary<string, string>)Resources["it"])["NoSnapshotChanges"] = "Questo snapshot non contiene modifiche applicabili.";
+        ((Dictionary<string, string>)Resources["es"])["NoSnapshotChanges"] = "Esta instantánea no tiene cambios aplicables.";
+        ((Dictionary<string, string>)Resources["fr"])["NoSnapshotChanges"] = "Cet instantané ne contient aucun changement applicable.";
+        ((Dictionary<string, string>)Resources["en"])["Changed"] = "Current configuration";
+        ((Dictionary<string, string>)Resources["it"])["Changed"] = "Configurazione corrente";
+        ((Dictionary<string, string>)Resources["es"])["Changed"] = "Configuración actual";
+        ((Dictionary<string, string>)Resources["fr"])["Changed"] = "Configuration actuelle";
+        ((Dictionary<string, string>)Resources["en"])["SnapshotsHint"] = "Saved points can be restored from this page. They stay on this PC.";
+        ((Dictionary<string, string>)Resources["it"])["SnapshotsHint"] = "I punti salvati restano su questo PC e possono essere ripristinati da qui.";
+        ((Dictionary<string, string>)Resources["es"])["SnapshotsHint"] = "Los puntos guardados permanecen en este PC y pueden restaurarse desde aquí.";
+        ((Dictionary<string, string>)Resources["fr"])["SnapshotsHint"] = "Les points enregistrés restent sur ce PC et peuvent être restaurés ici.";
     }
 
     public static IReadOnlyCollection<string> Languages => new[] { "en", "it", "es", "fr" };

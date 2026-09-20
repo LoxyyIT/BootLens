@@ -23,6 +23,7 @@ public partial class ActionConfirmationWindow : Window
         CurrentText.Text = current;
         NextLabel.Text = nextLabel;
         NextText.Text = next;
+        if (string.IsNullOrWhiteSpace(DontAskText)) DontAskCheckBox.Visibility = Visibility.Collapsed;
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) => DialogResult = false;

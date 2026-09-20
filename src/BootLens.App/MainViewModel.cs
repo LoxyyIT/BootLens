@@ -31,7 +31,6 @@ public partial class MainViewModel : ObservableObject
     private readonly ThemeManager _themeManager;
     private readonly UpdateService _updateService = new();
     private bool _loadingSettings;
-    private bool _lastScanSucceeded;
 
     public MainViewModel(IBootLensRepository repository, IStartupScanner scanner, IStartupModifier modifier, ChangeDetection changeDetection, StartupAnalysisService analysis, LocalizationService localization, ThemeManager themeManager)
     {
@@ -220,7 +219,6 @@ public partial class MainViewModel : ObservableObject
     {
         if (IsBusy) return;
         IsBusy = true;
-        _lastScanSucceeded = false;
         StatusText = Texts["Scanning"];
         try
         {
@@ -235,7 +233,6 @@ public partial class MainViewModel : ObservableObject
             await LoadSecondaryDataAsync();
             await UpdateSummaryAsync();
             StatusText = $"{current.Count} {Texts["ActiveItems"].ToLowerInvariant()} · {DateTime.Now:t}";
-            _lastScanSucceeded = true;
         }
         catch (OperationCanceledException) { StatusText = Texts["Cancel"]; }
         catch (Exception exception) { StatusText = exception.Message; }
@@ -290,16 +287,9 @@ public partial class MainViewModel : ObservableObject
             {
                 if (result.UndoRecord is not null) await _repository.SaveUndoAsync(result.UndoRecord);
                 ApplyEntryState(entry, enabling ? StartupState.Enabled : StartupState.Disabled);
-                StatusText = result.Message;
-                IsBusy = false;
-                await ScanAsync();
-                if (_lastScanSucceeded)
-                {
-                    var refreshed = Entries.FirstOrDefault(current => current.Id == entry.Id);
-                    StatusText = refreshed?.State == (enabling ? StartupState.Enabled : StartupState.Disabled)
-                        ? $"{result.Message} ✓"
-                        : $"{result.Message} · {Texts["NeedsReview"]}";
-                }
+                await _repository.SaveEntriesAsync(Entries.ToArray());
+                await UpdateSummaryAsync();
+                StatusText = $"{result.Message} ✓";
             }
             else StatusText = result.Message;
         }
@@ -315,6 +305,60 @@ public partial class MainViewModel : ObservableObject
         UpdateUrl = result.ReleaseUrl;
         UpdateStatus = !result.Succeeded ? Texts["UpdateCheckUnavailable"] : result.HasUpdate ? string.Format(Texts["UpdateAvailable"], result.LatestVersion) : result.LatestVersion is null ? Texts["NoRelease"] : Texts["UpToDate"];
         OnPropertyChanged(nameof(UpdateStatus));
+    }
+
+    [RelayCommand]
+    private async Task RestoreSnapshotAsync(Snapshot? snapshot)
+    {
+        if (IsBusy || snapshot is null || snapshot.Entries.Count == 0) return;
+        var changes = snapshot.Entries
+            .Select(target => (target, current: Entries.FirstOrDefault(entry => entry.Id == target.Id)))
+            .Where(pair => pair.current is not null && pair.current.State != pair.target.State && CanChange(pair.current))
+            .ToArray();
+        if (changes.Length == 0)
+        {
+            StatusText = Texts["NoSnapshotChanges"];
+            return;
+        }
+
+        var dialog = new ActionConfirmationWindow(
+            Texts["RestoreSnapshot"],
+            $"{snapshot.Name} · {changes.Length} {Texts["ActiveItems"].ToLowerInvariant()}",
+            Texts["ConfirmActionWarning"],
+            Texts["CurrentState"],
+            Texts["Changed"],
+            Texts["NewState"],
+            Texts["RestoreSnapshot"],
+            string.Empty,
+            Texts["Confirm"],
+            Texts["Cancel"])
+        {
+            Owner = Application.Current.MainWindow
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        IsBusy = true;
+        var succeeded = 0;
+        try
+        {
+            foreach (var (target, current) in changes)
+            {
+                var result = target.State == StartupState.Disabled ? await _modifier.DisableAsync(current!) : await _modifier.EnableAsync(current!);
+                if (!result.Succeeded || !result.Verified) continue;
+                if (result.UndoRecord is not null) await _repository.SaveUndoAsync(result.UndoRecord);
+                ApplyEntryState(current!, target.State);
+                succeeded++;
+            }
+            await _repository.SaveEntriesAsync(Entries.ToArray());
+            await UpdateSummaryAsync();
+            StatusText = succeeded == changes.Length
+                ? $"{Texts["RestoreSnapshot"]} ✓"
+                : $"{Texts["RestoreSnapshot"]}: {succeeded}/{changes.Length} · {Texts["NeedsReview"]}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -627,7 +671,6 @@ public partial class MainViewModel : ObservableObject
         if (SelectedEntry?.Id == entry.Id) SelectedEntry = updated;
         RebuildRows();
         OnPropertyChanged(nameof(VisibleEntries));
-        _ = UpdateSummaryAsync();
         NotifySelectedEntry();
     }
 
