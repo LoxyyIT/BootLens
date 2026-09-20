@@ -1,0 +1,407 @@
+<Window x:Class="BootLens.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:BootLens.App"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="BootLens"
+        Icon="/Resources/logo.png"
+        Width="1440"
+        Height="900"
+        MinWidth="1024"
+        MinHeight="650"
+        Background="{DynamicResource WindowBackground}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="210" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="0,0,1,0">
+            <Grid Margin="16,20,16,18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Margin="4,0,4,26">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="42" Height="42" CornerRadius="12" Background="{DynamicResource PanelMuted}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" Padding="4">
+                            <Image Source="/Resources/logo.png" Stretch="Uniform" />
+                        </Border>
+                        <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="BootLens" FontSize="16" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Tagline}" FontSize="10" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Border Height="1" Background="{DynamicResource BorderColor}" Margin="0,24,0,0" />
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Texts[Overview]}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" Margin="10,0,0,8" />
+                        <Button Style="{StaticResource SidebarButton}" Background="{Binding IsOverviewPage, Converter={StaticResource BooleanToActiveBrush}}" Command="{Binding SetPageCommand}" CommandParameter="Overview"><StackPanel Orientation="Horizontal"><TextBlock Text="◉" Width="24" Foreground="{DynamicResource AccentColor}" /><TextBlock Text="{Binding Texts[Overview]}" /></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarButton}" Background="{Binding IsStartupPage, Converter={StaticResource BooleanToActiveBrush}}" Command="{Binding SetPageCommand}" CommandParameter="Startup"><StackPanel Orientation="Horizontal"><TextBlock Text="⌁" Width="24" Foreground="{DynamicResource TextSecondary}" /><TextBlock Text="{Binding Texts[Startup]}" /></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarButton}" Background="{Binding IsTimelinePage, Converter={StaticResource BooleanToActiveBrush}}" Command="{Binding SetPageCommand}" CommandParameter="Timeline"><StackPanel Orientation="Horizontal"><TextBlock Text="╱" Width="24" Foreground="{DynamicResource TextSecondary}" /><TextBlock Text="{Binding Texts[Timeline]}" /></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarButton}" Background="{Binding IsBootHistoryPage, Converter={StaticResource BooleanToActiveBrush}}" Command="{Binding SetPageCommand}" CommandParameter="BootHistory"><StackPanel Orientation="Horizontal"><TextBlock Text="◷" Width="24" Foreground="{DynamicResource TextSecondary}" /><TextBlock Text="{Binding Texts[BootHistory]}" /></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarButton}" Background="{Binding IsChangesPage, Converter={StaticResource BooleanToActiveBrush}}" Command="{Binding SetPageCommand}" CommandParameter="Changes"><StackPanel Orientation="Horizontal"><TextBlock Text="✦" Width="24" Foreground="{DynamicResource TextSecondary}" /><TextBlock Text="{Binding Texts[Changes]}" /></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarButton}" Background="{Binding IsSnapshotsPage, Converter={StaticResource BooleanToActiveBrush}}" Command="{Binding SetPageCommand}" CommandParameter="Snapshots"><StackPanel Orientation="Horizontal"><TextBlock Text="▣" Width="24" Foreground="{DynamicResource TextSecondary}" /><TextBlock Text="{Binding Texts[Snapshots]}" /></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarButton}" IsEnabled="False"><StackPanel Orientation="Horizontal"><TextBlock Text="○" Width="24" Foreground="{DynamicResource TextSecondary}" /><StackPanel><TextBlock Text="{Binding Texts[Community]}" /><TextBlock Text="{Binding Texts[ComingSoon]}" FontSize="9" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" /></StackPanel></StackPanel></Button>
+                        <TextBlock Text="{Binding Texts[Advanced]}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" Margin="10,25,0,8" />
+                        <Button Style="{StaticResource SidebarButton}" Background="{Binding IsAdvancedPage, Converter={StaticResource BooleanToActiveBrush}}" Command="{Binding SetPageCommand}" CommandParameter="Advanced"><StackPanel Orientation="Horizontal"><TextBlock Text="⌘" Width="24" Foreground="{DynamicResource TextSecondary}" /><TextBlock Text="{Binding Texts[Advanced]}" /></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarButton}" Background="{Binding IsSettingsPage, Converter={StaticResource BooleanToActiveBrush}}" Command="{Binding SetPageCommand}" CommandParameter="Settings"><StackPanel Orientation="Horizontal"><TextBlock Text="⚙" Width="24" Foreground="{DynamicResource TextSecondary}" /><TextBlock Text="{Binding Texts[Settings]}" /></StackPanel></Button>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <StackPanel Grid.Row="2">
+                    <Border Background="{DynamicResource AccentSoft}" CornerRadius="12" Padding="12" Margin="0,0,0,15">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal"><Ellipse Width="7" Height="7" Fill="{DynamicResource AccentColor}" Margin="0,0,7,0" VerticalAlignment="Center" /><TextBlock Text="{Binding Texts[OfflineMode]}" FontSize="11" FontWeight="SemiBold" /></StackPanel>
+                            <TextBlock Text="{Binding Texts[CommunityOffHint]}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="10" LineHeight="15" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Texts[Language]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox Width="108" Height="30" SelectedValue="{Binding CurrentLanguage, Mode=OneWay}" SelectedValuePath="Tag" SelectionChanged="LanguageComboBox_SelectionChanged">
+                            <ComboBoxItem Tag="en"><StackPanel Orientation="Horizontal"><local:LanguageFlag Code="en" Width="22" Height="14" Margin="0,0,7,0" /><TextBlock Text="English" FontSize="10" VerticalAlignment="Center" /></StackPanel></ComboBoxItem>
+                            <ComboBoxItem Tag="it"><StackPanel Orientation="Horizontal"><local:LanguageFlag Code="it" Width="22" Height="14" Margin="0,0,7,0" /><TextBlock Text="Italiano" FontSize="10" VerticalAlignment="Center" /></StackPanel></ComboBoxItem>
+                            <ComboBoxItem Tag="es"><StackPanel Orientation="Horizontal"><local:LanguageFlag Code="es" Width="22" Height="14" Margin="0,0,7,0" /><TextBlock Text="Español" FontSize="10" VerticalAlignment="Center" /></StackPanel></ComboBoxItem>
+                            <ComboBoxItem Tag="fr"><StackPanel Orientation="Horizontal"><local:LanguageFlag Code="fr" Width="22" Height="14" Margin="0,0,7,0" /><TextBlock Text="Français" FontSize="10" VerticalAlignment="Center" /></StackPanel></ComboBoxItem>
+                        </ComboBox>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="28,24,28,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,20">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                    <TextBlock Text="{Binding CurrentPageTitle}" FontSize="31" FontWeight="SemiBold" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Ellipse Width="6" Height="6" Fill="{DynamicResource AccentColor}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="7,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="12" Width="310" Height="44" Padding="8,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
+                            <TextBlock Text="⌕" FontSize="20" Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            <TextBox x:Name="SearchBox" Grid.Column="1" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding Texts[SearchHint]}" Background="Transparent" BorderThickness="0" Padding="2,10,2,8" Foreground="{DynamicResource TextPrimary}" FontSize="12" />
+                            <Button Grid.Column="2" Content="×" Command="{Binding ClearSearchCommand}" Background="Transparent" BorderThickness="0" Padding="0" FontSize="18" Foreground="{DynamicResource TextSecondary}" ToolTip="{Binding Texts[ClearSearch]}" />
+                        </Grid>
+                    </Border>
+                    <Button Style="{StaticResource PrimaryButton}" Command="{Binding ScanCommand}" Margin="10,0,0,0"><StackPanel Orientation="Horizontal"><TextBlock Text="↻" FontSize="16" Margin="0,0,8,0" /><TextBlock Text="{Binding Texts[Scan]}" /></StackPanel></Button>
+                </StackPanel>
+            </Grid>
+
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="24" Margin="0,0,0,22" Visibility="{Binding IsOverviewPage, Converter={StaticResource BoolToVisibility}}">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*" MinWidth="180" /><ColumnDefinition Width="2.2*" MinWidth="220" /><ColumnDefinition Width="0.9*" MinWidth="145" /></Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Texts[BootHealth]}" FontSize="11" Foreground="{DynamicResource TextSecondary}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0"><TextBlock Text="{Binding HealthScore}" FontSize="29" FontWeight="SemiBold" /><Border Background="{DynamicResource AccentSoft}" CornerRadius="7" Padding="7,4" Margin="10,0,0,2" VerticalAlignment="Center"><TextBlock Text="{Binding Texts[Score]}" FontSize="9" Foreground="{DynamicResource AccentColor}" /></Border></StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,7,0,0"><TextBlock Text="{Binding LatestBoot}" FontSize="12" FontWeight="SemiBold" /><TextBlock Text=" · " Foreground="{DynamicResource TextSecondary}" /><TextBlock Text="{Binding LatestBootHint}" Foreground="{DynamicResource TextSecondary}" FontSize="10" TextWrapping="Wrap" /></StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="28,0,30,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Texts[Welcome]}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Texts[NoEntriesHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Texts[ActiveItems]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" />
+                        <TextBlock Text="{Binding ActiveItems}" FontSize="27" FontWeight="SemiBold" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Texts[CurrentConfiguration]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="2" Style="{StaticResource PagePanel}" Visibility="{Binding IsOverviewOrStartupPage, Converter={StaticResource BoolToVisibility}}">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="1.65*" MinWidth="430" /><ColumnDefinition Width="1*" MinWidth="300" /></Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource Card}" Padding="16">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top" Margin="4,2,4,13">
+                            <Grid>
+                                <StackPanel><TextBlock Text="{Binding Texts[Startup]}" FontSize="17" FontWeight="SemiBold" /><TextBlock Text="{Binding Texts[CurrentConfiguration]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,0" /></StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><Border Background="{DynamicResource PanelMuted}" CornerRadius="7" Padding="8,5" Margin="0,0,8,0"><TextBlock Text="{Binding Texts[ActiveItems]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" /></Border><TextBlock Text="{Binding Texts[Advanced]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" /></StackPanel>
+                            </Grid>
+                            <Border Background="{DynamicResource PanelMuted}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="12" Padding="9" Margin="0,14,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Texts[FilterHeading]}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" Margin="3,0,0,5" />
+                                    <WrapPanel>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsAllFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="All"><StackPanel Orientation="Horizontal"><TextBlock Text="◉" Foreground="{DynamicResource AccentColor}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[All]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsActiveFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Active"><StackPanel Orientation="Horizontal"><TextBlock Text="✓" Foreground="{DynamicResource AccentColor}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[ActiveItems]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsDisabledFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Disabled"><StackPanel Orientation="Horizontal"><TextBlock Text="Ⅱ" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Disable]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsBrokenFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Broken"><StackPanel Orientation="Horizontal"><TextBlock Text="!" Foreground="#D97706" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[NeedsReview]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsHighImpactFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="HighImpact"><StackPanel Orientation="Horizontal"><TextBlock Text="ϟ" Foreground="#D97706" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[HighImpact]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsUnsignedFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Unsigned"><StackPanel Orientation="Horizontal"><TextBlock Text="◇" Foreground="#D97706" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Unsigned]}" /></StackPanel></ToggleButton>
+                                    </WrapPanel>
+                                    <TextBlock Text="{Binding Texts[FilterSources]}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" Margin="3,10,0,5" />
+                                    <WrapPanel>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsMicrosoftFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Microsoft"><StackPanel Orientation="Horizontal"><TextBlock Text="⊞" Foreground="{DynamicResource AccentColor}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Microsoft]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsThirdPartyFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="ThirdParty"><StackPanel Orientation="Horizontal"><TextBlock Text="◈" Foreground="{DynamicResource AccentColor}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[ThirdParty]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsRegistryFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Registry"><StackPanel Orientation="Horizontal"><TextBlock Text="▤" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Registry]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsServicesFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Services"><StackPanel Orientation="Horizontal"><TextBlock Text="⚙" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Services]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsDriversFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Drivers"><StackPanel Orientation="Horizontal"><TextBlock Text="◆" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Drivers]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsTasksFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="ScheduledTasks"><StackPanel Orientation="Horizontal"><TextBlock Text="◷" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[ScheduledTasks]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsStartupFolderFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="StartupFolder"><StackPanel Orientation="Horizontal"><TextBlock Text="▣" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[StartupFolder]}" /></StackPanel></ToggleButton>
+                                    </WrapPanel>
+                                    <TextBlock Text="{Binding Texts[FilterSystemSurfaces]}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" Margin="3,10,0,5" />
+                                    <WrapPanel>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsWinlogonFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Winlogon"><StackPanel Orientation="Horizontal"><TextBlock Text="⌁" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Winlogon]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsShellFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Shell"><StackPanel Orientation="Horizontal"><TextBlock Text="⌂" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Shell]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsWmiFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="Wmi"><StackPanel Orientation="Horizontal"><TextBlock Text="◌" Foreground="{DynamicResource TextSecondary}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[Wmi]}" /></StackPanel></ToggleButton>
+                                        <ToggleButton Style="{StaticResource FilterChip}" IsChecked="{Binding IsAdvancedSurfaceFilter, Mode=OneWay}" Command="{Binding SetFilterCommand}" CommandParameter="AdvancedSurfaces"><StackPanel Orientation="Horizontal"><TextBlock Text="✦" Foreground="{DynamicResource AccentColor}" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[AdvancedSurfaces]}" /></StackPanel></ToggleButton>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                            <Grid Margin="0,10,0,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock Text="↕" Foreground="{DynamicResource AccentColor}" FontSize="14" Margin="0,0,6,0" /><TextBlock Text="{Binding Texts[SortBy]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" /></StackPanel>
+                                <WrapPanel HorizontalAlignment="Right">
+                                    <Button Command="{Binding SetSortCommand}" CommandParameter="Name" Padding="8,5" FontSize="10"><StackPanel Orientation="Horizontal"><TextBlock Text="A↕" Foreground="{DynamicResource AccentColor}" Margin="0,0,4,0" /><TextBlock Text="{Binding Texts[Name]}" /></StackPanel></Button>
+                                    <Button Command="{Binding SetSortCommand}" CommandParameter="Impact" Padding="8,5" FontSize="10" Margin="5,0,0,0"><StackPanel Orientation="Horizontal"><TextBlock Text="ϟ" Foreground="{DynamicResource AccentColor}" Margin="0,0,4,0" /><TextBlock Text="{Binding Texts[Impact]}" /></StackPanel></Button>
+                                    <Button Command="{Binding SetSortCommand}" CommandParameter="Score" Padding="8,5" FontSize="10" Margin="5,0,0,0"><StackPanel Orientation="Horizontal"><TextBlock Text="★" Foreground="{DynamicResource AccentColor}" Margin="0,0,4,0" /><TextBlock Text="{Binding Texts[Score]}" /></StackPanel></Button>
+                                    <Button Command="{Binding SetSortCommand}" CommandParameter="Publisher" Padding="8,5" FontSize="10" Margin="5,0,0,0"><StackPanel Orientation="Horizontal"><TextBlock Text="◈" Foreground="{DynamicResource AccentColor}" Margin="0,0,4,0" /><TextBlock Text="{Binding Texts[Publisher]}" /></StackPanel></Button>
+                                    <Button Command="{Binding SetSortCommand}" CommandParameter="State" Padding="8,5" FontSize="10" Margin="5,0,0,0"><StackPanel Orientation="Horizontal"><TextBlock Text="●" Foreground="{DynamicResource AccentColor}" Margin="0,0,4,0" /><TextBlock Text="{Binding Texts[Status]}" /></StackPanel></Button>
+                                    <Button Command="{Binding SetSortCommand}" CommandParameter="Mechanism" Padding="8,5" FontSize="10" Margin="5,0,0,0"><StackPanel Orientation="Horizontal"><TextBlock Text="⌘" Foreground="{DynamicResource AccentColor}" Margin="0,0,4,0" /><TextBlock Text="{Binding Texts[Mechanism]}" /></StackPanel></Button>
+                                </WrapPanel>
+                            </Grid>
+                        </StackPanel>
+                        <Border Height="1" Background="{DynamicResource BorderColor}" DockPanel.Dock="Top" Margin="0,0,0,7" />
+                        <ListView ItemsSource="{Binding VisibleEntries}" SelectedItem="{Binding SelectedRow}" BorderThickness="0" Background="Transparent" Padding="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid MinHeight="78">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="42" /><ColumnDefinition Width="1.55*" MinWidth="150" /><ColumnDefinition Width="1.05*" MinWidth="92" /><ColumnDefinition Width="1.25*" MinWidth="105" /><ColumnDefinition Width="70" /><ColumnDefinition Width="52" /></Grid.ColumnDefinitions>
+                                        <Border Width="30" Height="30" CornerRadius="10" Background="{DynamicResource AccentSoft}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                            <Grid>
+                                                <TextBlock Text="{Binding IconGlyph}" Visibility="{Binding HasIcon, Converter={StaticResource InverseBoolToVisibility}}" Foreground="{DynamicResource AccentColor}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <Image Source="{Binding IconSource}" Visibility="{Binding HasIcon, Converter={StaticResource BoolToVisibility}}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0,10,0">
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding ProcessName}" FontSize="10" Foreground="{DynamicResource AccentColor}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                                            <TextBlock Text="{Binding ExecutablePath}" ToolTip="{Binding ExecutablePath}" FontSize="9" Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,8,0"><TextBlock Text="{Binding Publisher}" FontSize="10" Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding Mechanism}" FontSize="10" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,0" /></StackPanel>
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center"><Ellipse Width="7" Height="7" Fill="{DynamicResource AccentColor}" Margin="0,0,7,0" VerticalAlignment="Center" /><TextBlock Text="{Binding State}" FontSize="10" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                        <TextBlock Grid.Column="4" Text="{Binding Score}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentColor}" VerticalAlignment="Center" />
+                                        <CheckBox Grid.Column="5" Style="{StaticResource ActionToggle}" IsChecked="{Binding IsChecked, Mode=OneWay}" Command="{Binding DataContext.ToggleRowCommand, RelativeSource={RelativeSource AncestorType=ListView}}" CommandParameter="{Binding}" IsEnabled="{Binding CanChange}" ToolTip="{Binding ToggleText}" HorizontalAlignment="Right" VerticalAlignment="Center" PreviewMouseLeftButtonDown="ActionToggle_PreviewMouseLeftButtonDown" PreviewKeyDown="ActionToggle_PreviewKeyDown" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </DockPanel>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="18,0,0,0" Padding="24">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal"><TextBlock Text="{Binding Texts[Details]}" FontSize="16" FontWeight="SemiBold" /><Border Background="{DynamicResource PanelMuted}" CornerRadius="6" Padding="6,3" Margin="10,0,0,0"><TextBlock Text="{Binding SelectedEntryMechanism}" FontSize="9" Foreground="{DynamicResource TextSecondary}" /></Border></StackPanel>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0"><TextBlock Text="{Binding Texts[Mode]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0" /><Button Content="{Binding Texts[Simple]}" Command="{Binding SetModeCommand}" CommandParameter="Simple" Padding="7,4" FontSize="10" /><Button Content="{Binding Texts[Advanced]}" Command="{Binding SetModeCommand}" CommandParameter="Advanced" Padding="7,4" Margin="5,0,0,0" FontSize="10" /></StackPanel>
+                            </StackPanel>
+                            <Border Height="1" Background="{DynamicResource BorderColor}" Margin="0,18,0,18" />
+                            <TextBlock Text="{Binding SelectedEntryTitle}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SelectedEntryPublisher}" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,6,0,22" />
+                            <TextBlock Text="{Binding Texts[Process]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+                            <TextBlock Text="{Binding SelectedEntryProcess}" FontSize="11" Foreground="{DynamicResource AccentColor}" TextWrapping="Wrap" Margin="0,4,0,14" />
+                            <TextBlock Text="{Binding SelectedEntryDescription}" Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,18" />
+                            <TextBlock Text="{Binding Texts[Status]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+                            <TextBlock Text="{Binding SelectedEntryState}" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,16" />
+                            <TextBlock Text="{Binding Texts[Impact]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+                            <TextBlock Text="{Binding SelectedEntryScore}" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,16" />
+                            <Border Background="{DynamicResource AccentSoft}" CornerRadius="10" Padding="12" Margin="0,0,0,18">
+                                <StackPanel><TextBlock Text="{Binding SelectedEntryRecommendation}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentColor}" /><TextBlock Text="{Binding SelectedEntryRecommendationExplanation}" FontSize="10" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,5,0,0" /></StackPanel>
+                            </Border>
+                            <TextBlock Text="{Binding Texts[WhyStarts]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+                            <TextBlock Text="{Binding SelectedEntryPath}" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,5" />
+                            <TextBlock Text="{Binding SelectedEntry.SourceLocation}" TextWrapping="Wrap" FontSize="10" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,18" />
+                            <Grid Visibility="{Binding IsAdvancedMode, Converter={StaticResource BoolToVisibility}}">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="{Binding Texts[CommandLine]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Grid.Column="1" Text="{Binding SelectedEntryCommand}" FontSize="10" TextWrapping="Wrap" Margin="8,0,0,8" />
+                                <TextBlock Grid.Row="1" Text="{Binding Texts[Version]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedEntryVersion}" FontSize="10" Margin="8,0,0,8" />
+                                <TextBlock Grid.Row="2" Text="{Binding Texts[Signature]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedEntrySignature}" FontSize="10" Margin="8,0,0,8" />
+                                <TextBlock Grid.Row="3" Text="{Binding Texts[Hash]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedEntryHash}" FontSize="10" TextWrapping="Wrap" Margin="8,0,0,8" />
+                                <TextBlock Grid.Row="4" Text="{Binding Texts[Trigger]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedEntryTrigger}" FontSize="10" Margin="8,0,0,8" />
+                                <TextBlock Grid.Row="5" Text="{Binding Texts[CPU]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedEntryCpu}" FontSize="10" Margin="8,0,0,8" />
+                                <TextBlock Grid.Row="6" Text="{Binding Texts[RAM]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding SelectedEntryMemory}" FontSize="10" Margin="8,0,0,8" />
+                            </Grid>
+                            <TextBlock Text="{Binding Texts[TrustSignals]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" Margin="0,12,0,4" />
+                            <TextBlock Text="{Binding SelectedEntryTrust}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,16" />
+                            <TextBlock Text="{Binding Texts[FirstSeen]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+                            <TextBlock Text="{Binding SelectedEntryFirstSeen}" FontSize="10" Margin="0,4,0,12" />
+                            <TextBlock Text="{Binding Texts[LastSeen]}" FontSize="10" Foreground="{DynamicResource TextSecondary}" />
+                            <TextBlock Text="{Binding SelectedEntryLastSeen}" FontSize="10" Margin="0,4,0,22" />
+                            <Grid Margin="0,4,0,0">
+                                <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding SelectedActionText}" FontSize="11" FontWeight="SemiBold" /><TextBlock Text="{Binding SelectedEntryState}" FontSize="10" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" /></StackPanel>
+                                <CheckBox Style="{StaticResource ActionToggle}" IsChecked="{Binding SelectedEntryIsChecked, Mode=OneWay}" Command="{Binding ToggleSelectedCommand}" IsEnabled="{Binding CanChangeSelected}" ToolTip="{Binding SelectedActionText}" HorizontalAlignment="Right" VerticalAlignment="Center" PreviewMouseLeftButtonDown="ActionToggle_PreviewMouseLeftButtonDown" PreviewKeyDown="ActionToggle_PreviewKeyDown" />
+                            </Grid>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Column="1" Margin="34,120,34,28" Style="{StaticResource PagePanel}" Visibility="{Binding IsUtilityPage, Converter={StaticResource BoolToVisibility}}">
+            <Border Style="{StaticResource Card}" Padding="26">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <StackPanel Visibility="{Binding IsTimelinePage, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding Texts[Timeline]}" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Texts[TimelineHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,7,0,24" />
+                            <ItemsControl ItemsSource="{Binding BootMeasurements}">
+                                <ItemsControl.ItemTemplate><DataTemplate><Border Background="{DynamicResource PanelMuted}" CornerRadius="10" Padding="14" Margin="0,0,0,8"><Grid><TextBlock Text="{Binding StartedUtc, StringFormat='{}{0:g}'}" FontSize="11" /><TextBlock Text="{Binding DurationSeconds, StringFormat='{}{0:0.0}s'}" HorizontalAlignment="Right" Foreground="{DynamicResource AccentColor}" FontWeight="SemiBold" /></Grid></Border></DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding Texts[NoMeasurements]}" Foreground="{DynamicResource TextSecondary}" Visibility="{Binding BootMeasurements.Count, Converter={StaticResource ZeroToVisibility}}" />
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsBootHistoryPage, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding Texts[BootHistory]}" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Texts[BootHistoryHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,7,0,24" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{Binding Texts[LatestMeasurement]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Text="{Binding LatestBoot}" FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0" /></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{Binding Texts[Median]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Text="{Binding MedianBoot}" FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0" /></StackPanel></Border>
+                                <Border Grid.Column="2" Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{Binding Texts[Trend]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Text="{Binding Trend}" FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0" /></StackPanel></Border>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsChangesPage, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding Texts[Changes]}" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Texts[ChangesHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,7,0,24" />
+                            <ItemsControl ItemsSource="{Binding RecentChanges}">
+                                <ItemsControl.ItemTemplate><DataTemplate><Border Background="{DynamicResource PanelMuted}" CornerRadius="10" Padding="14" Margin="0,0,0,8"><Grid><StackPanel><TextBlock Text="{Binding ChangeType}" FontSize="11" FontWeight="SemiBold" /><TextBlock Text="{Binding Summary}" Foreground="{DynamicResource TextSecondary}" FontSize="11" Margin="0,4,0,0" /></StackPanel><TextBlock Text="{Binding DetectedUtc, StringFormat='{}{0:g}'}" HorizontalAlignment="Right" Foreground="{DynamicResource TextSecondary}" FontSize="10" /></Grid></Border></DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding Texts[NoChanges]}" Foreground="{DynamicResource TextSecondary}" Visibility="{Binding RecentChanges.Count, Converter={StaticResource ZeroToVisibility}}" />
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsSnapshotsPage, Converter={StaticResource BoolToVisibility}}">
+                            <Grid><StackPanel><TextBlock Text="{Binding Texts[Snapshots]}" FontSize="24" FontWeight="SemiBold" /><TextBlock Text="{Binding Texts[SnapshotsHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,7,0,24" /></StackPanel><Button Style="{StaticResource PrimaryButton}" Content="{Binding Texts[CreateSnapshot]}" Command="{Binding CreateSnapshotCommand}" HorizontalAlignment="Right" VerticalAlignment="Center" /></Grid>
+                            <ItemsControl ItemsSource="{Binding Snapshots}">
+                                <ItemsControl.ItemTemplate><DataTemplate><Border Background="{DynamicResource PanelMuted}" CornerRadius="10" Padding="14" Margin="0,0,0,8"><Grid><StackPanel><TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" /><TextBlock Text="{Binding CreatedUtc, StringFormat='{}{0:g}'}" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,4,0,0" /></StackPanel><TextBlock Text="{Binding Entries.Count, StringFormat='{}{0} items'}" HorizontalAlignment="Right" Foreground="{DynamicResource AccentColor}" FontSize="10" /></Grid></Border></DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding Texts[NoSnapshots]}" Foreground="{DynamicResource TextSecondary}" Visibility="{Binding Snapshots.Count, Converter={StaticResource ZeroToVisibility}}" />
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsCommunityPage, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding Texts[Community]}" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Texts[CommunityHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,7,0,24" />
+                            <Border Background="{DynamicResource AccentSoft}" CornerRadius="14" Padding="18"><StackPanel><TextBlock Text="{Binding Texts[CommunityOff]}" Foreground="{DynamicResource AccentColor}" FontSize="15" FontWeight="SemiBold" /><TextBlock Text="{Binding Texts[CommunityOffHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0" /></StackPanel></Border>
+                            <Border Background="{DynamicResource PanelMuted}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,14,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="◌" Foreground="{DynamicResource AccentColor}" FontSize="18" FontWeight="SemiBold" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding Texts[CommunityScore]}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Texts[CommunityScoreHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap" Margin="0,7,0,0" />
+                                    </StackPanel>
+                                    <Border Grid.Column="1" Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="10,6" VerticalAlignment="Top" Margin="16,0,0,0">
+                                        <TextBlock Text="{Binding Texts[ComingSoon]}" Foreground="{DynamicResource AccentColor}" FontSize="10" FontWeight="SemiBold" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsAdvancedPage, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding Texts[Advanced]}" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Texts[AdvancedHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,7,0,24" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{Binding Texts[TotalEntries]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Text="{Binding Entries.Count}" FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0" /></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{Binding Texts[Unsigned]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Text="{Binding UnsignedItems}" FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0" /></StackPanel></Border>
+                                <Border Grid.Column="2" Style="{StaticResource MetricCard}"><StackPanel><TextBlock Text="{Binding Texts[UnknownPublisher]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" /><TextBlock Text="{Binding UnknownPublisherItems}" FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0" /></StackPanel></Border>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsSettingsPage, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding Texts[Settings]}" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Texts[SettingsHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="12" TextWrapping="Wrap" Margin="0,7,0,22" />
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource MetricCard}" Padding="18" Margin="0,0,8,12">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Texts[SettingsInteraction]}" FontSize="14" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Texts[Language]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" Margin="0,16,0,5" />
+                                        <ComboBox Width="182" Height="36" HorizontalAlignment="Left" SelectedValue="{Binding CurrentLanguage, Mode=OneWay}" SelectedValuePath="Tag" SelectionChanged="LanguageComboBox_SelectionChanged">
+                                            <ComboBoxItem Tag="en"><StackPanel Orientation="Horizontal"><local:LanguageFlag Code="en" Width="22" Height="14" Margin="0,0,8,0" /><TextBlock Text="English" /></StackPanel></ComboBoxItem>
+                                            <ComboBoxItem Tag="it"><StackPanel Orientation="Horizontal"><local:LanguageFlag Code="it" Width="22" Height="14" Margin="0,0,8,0" /><TextBlock Text="Italiano" /></StackPanel></ComboBoxItem>
+                                            <ComboBoxItem Tag="es"><StackPanel Orientation="Horizontal"><local:LanguageFlag Code="es" Width="22" Height="14" Margin="0,0,8,0" /><TextBlock Text="Español" /></StackPanel></ComboBoxItem>
+                                            <ComboBoxItem Tag="fr"><StackPanel Orientation="Horizontal"><local:LanguageFlag Code="fr" Width="22" Height="14" Margin="0,0,8,0" /><TextBlock Text="Français" /></StackPanel></ComboBoxItem>
+                                        </ComboBox>
+                                        <CheckBox IsChecked="{Binding ConfirmActionsEnabled}" Content="{Binding Texts[AskBeforeChanges]}" Margin="0,18,0,14" />
+                                        <CheckBox IsChecked="{Binding SnapshotBeforeChangesEnabled}" Content="{Binding Texts[SnapshotBeforeChanges]}" Margin="0,0,0,14" />
+                                        <CheckBox IsChecked="{Binding KeepSystemItemsBottomEnabled}" Content="{Binding Texts[KeepSystemItemsBottom]}" Margin="0,0,0,2" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Style="{StaticResource MetricCard}" Padding="18" Margin="8,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Texts[SettingsAutomation]}" FontSize="14" FontWeight="SemiBold" />
+                                        <CheckBox IsChecked="{Binding AutoScanOnLaunchEnabled}" Content="{Binding Texts[AutoScanOnLaunch]}" Margin="0,16,0,14" />
+                                        <CheckBox IsChecked="{Binding CheckUpdatesOnLaunchEnabled}" Content="{Binding Texts[CheckUpdatesOnLaunch]}" Margin="0,0,0,18" />
+                                        <TextBlock Text="{Binding Texts[SettingsData]}" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,12" />
+                                        <WrapPanel>
+                                            <Button Content="{Binding Texts[ExportReport]}" Command="{Binding ExportReportCommand}" Style="{StaticResource PrimaryButton}" Padding="12,8" Margin="0,0,8,8" />
+                                            <Button Content="{Binding Texts[OpenDataFolder]}" Command="{Binding OpenDataFolderCommand}" Padding="12,8" Margin="0,0,0,8" />
+                                        </WrapPanel>
+                                        <TextBlock Text="{Binding DataFolderPath}" Foreground="{DynamicResource TextSecondary}" FontSize="10" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                            <Border Background="{DynamicResource AccentSoft}" CornerRadius="12" Padding="16" Margin="0,4,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Texts[AppearanceHint]}" Foreground="{DynamicResource AccentColor}" FontSize="12" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Texts[SettingsLocalHint]}" Foreground="{DynamicResource TextSecondary}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Column="1" Grid.Row="3" Height="42" VerticalAlignment="Bottom" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderColor}" BorderThickness="1" CornerRadius="12" Padding="12,8" Margin="0,0,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="/Resources/logo.png" Width="22" Height="22" Stretch="Uniform" Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding Texts[Copyright]}" Foreground="{DynamicResource TextSecondary}" FontSize="10" VerticalAlignment="Center" />
+                    <TextBlock Text=" · " Foreground="{DynamicResource BorderColor}" FontSize="10" VerticalAlignment="Center" />
+                    <Button Content="{Binding Texts[ProjectGithub]}" Command="{Binding OpenProjectCommand}" Background="Transparent" BorderThickness="0" Padding="0" Foreground="{DynamicResource AccentColor}" FontSize="10" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentVersionText}" Foreground="{DynamicResource TextSecondary}" FontSize="10" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding UpdateStatus}" Foreground="{DynamicResource TextSecondary}" FontSize="10" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Button Content="{Binding Texts[CheckUpdates]}" Command="{Binding CheckForUpdatesCommand}" Padding="8,4" FontSize="10" Margin="0,0,6,0" />
+                    <Button Content="{Binding Texts[OpenUpdate]}" Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVisibility}}" Command="{Binding OpenUpdateCommand}" Style="{StaticResource PrimaryButton}" Padding="8,4" FontSize="10" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.ColumnSpan="2" Background="#A6000000" Visibility="{Binding IsFirstRun, Converter={StaticResource BoolToVisibility}}">
+            <Border Width="650" Padding="36" Background="{DynamicResource PanelBackground}" CornerRadius="20" HorizontalAlignment="Center" VerticalAlignment="Center" Effect="{DynamicResource SoftShadow}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Texts[AppName]}" FontSize="13" Foreground="{DynamicResource AccentColor}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Texts[SafetyTitle]}" FontSize="29" FontWeight="SemiBold" Margin="0,12,0,10" />
+                    <TextBlock Text="{Binding Texts[SafetyText]}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" LineHeight="22" />
+                    <CheckBox IsChecked="{Binding SafetyAccepted}" Content="{Binding Texts[SafetyCheck]}" Margin="0,25,0,22" />
+                    <Button Style="{StaticResource PrimaryButton}" Command="{Binding AcceptSafetyCommand}" Content="{Binding Texts[Continue]}" HorizontalAlignment="Right" IsEnabled="{Binding SafetyAccepted}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

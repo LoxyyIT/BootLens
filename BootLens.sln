@@ -1,0 +1,66 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.Core", "src\BootLens.Core\BootLens.Core.csproj", "{D11B2C8A-4444-49B0-82C4-000000000001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.Windows", "src\BootLens.Windows\BootLens.Windows.csproj", "{D11B2C8A-4444-49B0-82C4-000000000002}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.Data", "src\BootLens.Data\BootLens.Data.csproj", "{D11B2C8A-4444-49B0-82C4-000000000003}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.Agent", "src\BootLens.Agent\BootLens.Agent.csproj", "{D11B2C8A-4444-49B0-82C4-000000000004}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.Community.Client", "src\BootLens.Community.Client\BootLens.Community.Client.csproj", "{D11B2C8A-4444-49B0-82C4-000000000005}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.App", "src\BootLens.App\BootLens.App.csproj", "{D11B2C8A-4444-49B0-82C4-000000000006}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.Core.Tests", "tests\BootLens.Core.Tests\BootLens.Core.Tests.csproj", "{D11B2C8A-4444-49B0-82C4-000000000007}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.Windows.Tests", "tests\BootLens.Windows.Tests\BootLens.Windows.Tests.csproj", "{D11B2C8A-4444-49B0-82C4-000000000008}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BootLens.Community.Api", "server\BootLens.Community.Api\BootLens.Community.Api.csproj", "{D11B2C8A-4444-49B0-82C4-000000000009}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D11B2C8A-4444-49B0-82C4-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000003}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000003}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000003}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000003}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000004}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000004}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000004}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000005}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000005}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000005}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000006}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000006}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000006}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000006}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000007}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000007}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000007}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000007}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000008}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000008}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000008}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000008}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000009}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000009}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000009}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D11B2C8A-4444-49B0-82C4-000000000009}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

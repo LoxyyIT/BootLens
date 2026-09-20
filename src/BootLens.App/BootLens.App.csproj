@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>BootLens.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>BootLens</AssemblyName>
+    <Version>0.1.9</Version>
+    <AssemblyVersion>0.1.9.0</AssemblyVersion>
+    <FileVersion>0.1.9.0</FileVersion>
+    <InformationalVersion>0.1.9</InformationalVersion>
+    <ApplicationIcon>..\..\logo.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BootLens.Core\BootLens.Core.csproj" />
+    <ProjectReference Include="..\BootLens.Windows\BootLens.Windows.csproj" />
+    <ProjectReference Include="..\BootLens.Data\BootLens.Data.csproj" />
+    <ProjectReference Include="..\BootLens.Community.Client\BootLens.Community.Client.csproj" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\**\*" />
+    <Resource Include="..\..\logo.png" Link="Resources\logo.png" />
+    <ApplicationIcon Include="..\..\logo.ico" Link="logo.ico" />
+  </ItemGroup>
+</Project>

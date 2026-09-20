@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#081a2c">
+  <meta name="description" content="BootLens is an open-source Windows startup manager and boot analyzer that reveals, explains and helps manage what starts with your PC.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="BootLens — See what really starts with Windows">
+  <meta property="og:description" content="A local-first Windows startup manager and boot analyzer.">
+  <meta property="og:image" content="assets/images/logo.png">
+  <link rel="icon" href="assets/images/favicon.ico">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <title>BootLens — See what really starts with Windows</title>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to content</a>
+
+  <header class="site-header">
+    <div class="shell nav-wrap">
+      <a class="brand" href="#top" aria-label="BootLens home">
+        <img src="assets/images/logo.png" alt="BootLens logo">
+        <span>BootLens</span>
+      </a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-i18n-aria="menuLabel">Menu</button>
+      <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
+        <a href="#features" data-i18n="navFeatures">Features</a>
+        <a href="#how-it-works" data-i18n="navHow">How it works</a>
+        <a href="#comparison" data-i18n="navComparison">Comparison</a>
+        <a href="#download" data-i18n="navDownload">Build</a>
+        <a class="nav-github" href="https://github.com/LoxyyIT/BootLens">GitHub</a>
+        <div class="language-picker" data-language-picker>
+          <button id="language-trigger" class="language-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Language">
+            <span id="language-current-flag" class="language-flag flag-en" aria-hidden="true"></span>
+            <span id="language-current-name">English</span>
+            <span class="language-chevron" aria-hidden="true"></span>
+          </button>
+          <div id="language-menu" class="language-menu" role="listbox" aria-label="Language" hidden>
+            <button class="language-option" type="button" role="option" data-language="en" aria-selected="true"><span class="language-flag flag-en" aria-hidden="true"></span><span>English</span></button>
+            <button class="language-option" type="button" role="option" data-language="it" aria-selected="false"><span class="language-flag flag-it" aria-hidden="true"></span><span>Italiano</span></button>
+            <button class="language-option" type="button" role="option" data-language="es" aria-selected="false"><span class="language-flag flag-es" aria-hidden="true"></span><span>Español</span></button>
+            <button class="language-option" type="button" role="option" data-language="fr" aria-selected="false"><span class="language-flag flag-fr" aria-hidden="true"></span><span>Français</span></button>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="top" class="hero">
+      <div class="shell hero-grid">
+        <div class="hero-copy reveal">
+          <img class="hero-logo" src="assets/images/logo.png" alt="BootLens logo">
+          <p class="eyebrow light" data-i18n="heroEyebrow">OPEN SOURCE · WINDOWS · LOCAL-FIRST · MIT</p>
+          <h1 data-i18n="heroTitle">See what really starts with Windows.</h1>
+          <p class="hero-lede" data-i18n="heroCopy">Windows shows the obvious startup apps. BootLens brings more of the startup system into one understandable, local view.</p>
+          <div class="button-row">
+            <a class="button button-primary" href="#download" data-i18n="ctaBuild">Build BootLens</a>
+            <a class="button button-ghost" href="https://github.com/LoxyyIT/BootLens" data-i18n="ctaGithub">View on GitHub</a>
+          </div>
+          <p id="hero-note" class="hero-note" data-i18n="heroNote">No public release is published yet. The repository is ready to build locally.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="metric-strip">
+      <div class="shell metric-grid">
+        <div class="metric-item reveal"><strong>23 <span>↔</span> 562</strong><span data-i18n="metricEvidence">one real test-machine comparison</span></div>
+        <div class="metric-item reveal delay-1"><strong>4</strong><span data-i18n="metricLanguages">interface languages</span></div>
+        <div class="metric-item reveal delay-2"><strong>LOCAL</strong><span data-i18n="metricLocal">core works without an account or cloud</span></div>
+        <div class="metric-item reveal delay-3"><strong>COMING SOON</strong><span data-i18n="metricCommunity">Community coming soon</span></div>
+      </div>
+    </section>
+
+    <section id="comparison-proof" class="section evidence-section">
+      <div class="shell">
+        <div class="center-intro reveal">
+          <p class="eyebrow" data-i18n="evidenceEyebrow">ONE MACHINE · ONE MOMENT</p>
+          <h2 data-i18n="evidenceTitle">Windows showed 23. BootLens found 562.</h2>
+          <p data-i18n="evidenceCopy">The numbers below are a concrete test-machine observation, not a universal benchmark. They show the difference between a user-facing startup-app list and a wider inventory of startup-related mechanisms.</p>
+        </div>
+        <div class="evidence-grid">
+          <article class="evidence-card windows reveal">
+            <div class="evidence-kicker" data-i18n="evidenceWindowsKicker">Windows Startup Apps</div>
+            <div class="evidence-number" data-count="23">0</div>
+            <p data-i18n="metricWindowsLabel">startup apps visible in the normal Windows view</p>
+          </article>
+          <div class="vs-badge reveal delay-1">VS</div>
+          <article class="evidence-card bootlens reveal delay-2">
+            <div class="evidence-kicker" data-i18n="evidenceBootLensKicker">BootLens</div>
+            <div class="evidence-number" data-count="562">0</div>
+            <p data-i18n="metricBootLensLabel">startup-related entries detected by the wider scan</p>
+          </article>
+        </div>
+        <p class="evidence-note reveal" data-i18n="evidenceNote">Measured on one test machine. Counts vary by installed software, Windows configuration and the categories being inspected.</p>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="section section-navy">
+      <div class="shell">
+        <div class="center-intro light-copy reveal">
+          <p class="eyebrow light" data-i18n="howEyebrow">HOW IT WORKS</p>
+          <h2 data-i18n="howTitle">From scattered startup paths to one local picture.</h2>
+          <p data-i18n="howCopy">BootLens scans known Windows surfaces, normalizes what it finds and presents the evidence before any supported change.</p>
+        </div>
+        <div class="flow-grid">
+          <article class="flow-card reveal"><span class="flow-index">01</span><div class="flow-icon">W</div><h3 data-i18n="step1Title">Windows surfaces</h3><p data-i18n="step1Body">Read startup-related configuration from the local machine.</p></article>
+          <article class="flow-card reveal delay-1"><span class="flow-index">02</span><div class="flow-icon">S</div><h3 data-i18n="step2Title">Scanners</h3><p data-i18n="step2Body">Inspect Registry, folders, Tasks, Services and advanced surfaces.</p></article>
+          <article class="flow-card reveal delay-2"><span class="flow-index">03</span><div class="flow-icon">A</div><h3 data-i18n="step3Title">Analysis</h3><p data-i18n="step3Body">Normalize identity, state, publisher, path and trust evidence.</p></article>
+          <article class="flow-card reveal delay-3"><span class="flow-index">04</span><div class="flow-icon">U</div><h3 data-i18n="step4Title">Understand and act</h3><p data-i18n="step4Body">Search, compare, review and change only what the app can handle safely.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="shell">
+        <div class="center-intro reveal">
+          <p class="eyebrow" data-i18n="featuresEyebrow">WHAT YOU CAN DO</p>
+          <h2 data-i18n="featuresTitle">A wider inventory, with guardrails.</h2>
+          <p data-i18n="featuresCopy">BootLens combines discovery, explanation and careful controls instead of treating a single score as an answer.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card reveal"><div class="feature-icon cyan-bg">◈</div><h3 data-i18n="feature1Title">Startup discovery</h3><p data-i18n="feature1Body">See multiple startup mechanisms in one searchable local inventory.</p><span class="feature-tag" data-i18n="tagDiscover">DISCOVER</span></article>
+          <article class="feature-card reveal delay-1"><div class="feature-icon blue-bg">?</div><h3 data-i18n="feature2Title">Why does this start?</h3><p data-i18n="feature2Body">Trace the mechanism, source location, process and command behind an entry.</p><span class="feature-tag" data-i18n="tagUnderstand">UNDERSTAND</span></article>
+          <article class="feature-card reveal delay-2"><div class="feature-icon violet-bg">↗</div><h3 data-i18n="feature3Title">Local efficiency scoring</h3><p data-i18n="feature3Body">Keep efficiency estimates separate from trust and Community signals.</p><span class="feature-tag" data-i18n="tagMeasure">MEASURE</span></article>
+          <article class="feature-card reveal"><div class="feature-icon teal-bg">✓</div><h3 data-i18n="feature4Title">Trust signals</h3><p data-i18n="feature4Body">Review publisher, signature, ownership, missing executable and related evidence.</p><span class="feature-tag" data-i18n="tagUnderstand">UNDERSTAND</span></article>
+          <article class="feature-card reveal delay-1"><div class="feature-icon cyan-bg">↺</div><h3 data-i18n="feature5Title">History and changes</h3><p data-i18n="feature5Body">Compare scans, keep boot measurements and export local reports.</p><span class="feature-tag" data-i18n="tagMeasure">MEASURE</span></article>
+          <article class="feature-card reveal"><div class="feature-icon violet-bg">⌁</div><h3 data-i18n="feature7Title">Community coming soon</h3><p data-i18n="feature7Body">Community functions are not available yet and are temporarily disabled. Community Score is Coming soon…</p><span class="feature-tag" data-i18n="tagCommunity">COMMUNITY</span></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="privacy" class="section section-navy privacy-section">
+      <div class="shell privacy-grid">
+        <div class="section-intro light-copy reveal">
+          <p class="eyebrow light" data-i18n="privacyEyebrow">PRIVACY BY DEFAULT</p>
+          <h2 data-i18n="privacyTitle">Your startup data should stay yours.</h2>
+          <p data-i18n="privacyCopy">The main workflow is local. Community functions are not available yet and will arrive in a future release.</p>
+          <a class="text-link" href="https://github.com/LoxyyIT/BootLens/blob/main/docs/self-hosting.md" data-i18n="privacyDocs">Read the self-hosting notes →</a>
+        </div>
+        <div class="privacy-list reveal delay-1">
+          <div><span class="privacy-check">✓</span><div><h3 data-i18n="privacy1Title">Local core</h3><p data-i18n="privacy1Body">The app does not need an account or a cloud service for its core workflow.</p></div></div>
+          <div><span class="privacy-check">✓</span><div><h3 data-i18n="privacy2Title">Community coming soon</h3><p data-i18n="privacy2Body">Community is temporarily disabled while the feature is being completed for a future release.</p></div></div>
+          <div><span class="privacy-check">✓</span><div><h3 data-i18n="privacy3Title">No automatic execution</h3><p data-i18n="privacy3Body">Discovered command lines are inspected, not run by BootLens.</p></div></div>
+          <div><span class="privacy-check">✓</span><div><h3 data-i18n="privacy4Title">No fabricated measurements</h3><p data-i18n="privacy4Body">Boot measurements remain unavailable until real local observations exist.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="comparison" class="section section-soft">
+      <div class="shell">
+        <div class="center-intro reveal">
+          <p class="eyebrow" data-i18n="comparisonEyebrow">A FAIR COMPARISON</p>
+          <h2 data-i18n="comparisonTitle">Different tools, different jobs.</h2>
+          <p data-i18n="comparisonCopy">BootLens is not trying to replace every Windows diagnostic tool. This is a capability-level orientation based on the current project scope.</p>
+        </div>
+        <div class="table-wrap reveal">
+          <table class="comparison-table">
+            <thead><tr><th data-i18n="comparisonFeature">Capability</th><th>Windows Startup Apps</th><th>Sysinternals Autoruns</th><th class="highlight-col">BootLens</th></tr></thead>
+            <tbody>
+              <tr><td data-i18n="compareSimple">Simple startup-app view</td><td data-i18n="compareWindowsSimple">Yes</td><td data-i18n="compareAutorunsSimple">Not its primary focus</td><td class="highlight-col" data-i18n="compareBootLensSimple">Yes</td></tr>
+              <tr><td data-i18n="compareBroad">Broader autostart surfaces</td><td data-i18n="compareWindowsBroad">Limited</td><td data-i18n="compareAutorunsBroad">Broad</td><td class="highlight-col" data-i18n="compareBootLensBroad">Selected surfaces</td></tr>
+              <tr><td data-i18n="compareExplain">Local explanation and context</td><td data-i18n="compareWindowsExplain">Basic</td><td data-i18n="compareAutorunsExplain">Technical detail</td><td class="highlight-col" data-i18n="compareBootLensExplain">Mechanism-focused UI</td></tr>
+              <tr><td data-i18n="compareHistory">Boot history and local changes</td><td data-i18n="compareWindowsHistory">Not provided here</td><td data-i18n="compareAutorunsHistory">Not the focus</td><td class="highlight-col" data-i18n="compareBootLensHistory">Local storage</td></tr>
+              <tr><td data-i18n="compareLanguages">Interface languages</td><td data-i18n="compareWindowsLanguages">System-dependent</td><td data-i18n="compareAutorunsLanguages">System-dependent</td><td class="highlight-col" data-i18n="compareBootLensLanguages">English, Italian, Spanish, French</td></tr>
+              <tr><td data-i18n="compareCommunity">Community functions</td><td data-i18n="compareWindowsCommunity">Not part of this view</td><td data-i18n="compareAutorunsCommunity">Not part of this tool</td><td class="highlight-col" data-i18n="compareBootLensCommunity">Coming soon</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="download" class="section download-section">
+      <div class="shell download-grid">
+        <div class="download-copy reveal">
+          <p class="eyebrow light" data-i18n="downloadEyebrow">BUILD FROM SOURCE</p>
+          <h2 data-i18n="downloadTitle">No broken download button. Just the real path.</h2>
+          <p id="download-copy" data-i18n="downloadCopy">GitHub has no published BootLens release yet. You can build the self-contained Windows x64 app from the repository with the same commands used for local validation.</p>
+          <div class="button-row">
+            <a id="download-primary" class="button button-primary" href="https://github.com/LoxyyIT/BootLens" data-i18n="openGithub">Open repository</a>
+            <a class="button button-ghost" href="https://github.com/LoxyyIT/BootLens/blob/main/docs/build.md" data-i18n="readBuild">Read build notes</a>
+          </div>
+        </div>
+        <div class="command-card reveal delay-1">
+          <div class="command-top"><span data-i18n="commandLabel">PowerShell</span><span class="command-dot"></span></div>
+          <pre><code>dotnet restore BootLens.sln
+dotnet build BootLens.sln -c Release
+dotnet test BootLens.sln -c Release --no-build
+.\scripts\publish.ps1 -Version 0.1.9</code></pre>
+          <p data-i18n="downloadNote">The portable ZIP is written to the local artifacts folder. An installer requires Inno Setup 6.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-grid">
+      <div class="footer-brand"><img src="assets/images/logo.png" alt="BootLens logo"><div><strong>BootLens</strong><span data-i18n="footerTagline">See what really starts with Windows.</span></div></div>
+      <div class="footer-links"><a href="https://github.com/LoxyyIT/BootLens">GitHub</a><a href="https://github.com/LoxyyIT/BootLens/issues" data-i18n="footerIssues">Issues</a><a href="https://github.com/LoxyyIT/BootLens/blob/main/docs/build.md" data-i18n="footerDocs">Documentation</a><a href="https://github.com/LoxyyIT/BootLens/blob/main/SECURITY.md" data-i18n="footerSecurity">Security</a><a href="https://github.com/LoxyyIT/BootLens/blob/main/LICENSE" data-i18n="footerLicense">MIT License</a></div>
+      <p class="footer-copy" data-i18n="footerCopy">Open source Windows startup analysis by LoxyyIT.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/site.js"></script>
+</body>
+</html>

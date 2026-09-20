@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 15">
+  <rect width="22" height="15" fill="#fff"/>
+  <path fill="#b22234" d="M0 0h22v1.154H0zm0 2.308h22v1.154H0zm0 2.308h22V5.77H0zm0 2.308h22v1.154H0zm0 2.308h22v1.154H0zm0 2.308h22v1.154H0zm0 2.308h22V15H0z"/>
+  <path fill="#3c3b6e" d="M0 0h10.2v8.077H0z"/>
+  <g fill="#fff">
+    <path id="s" d="m0-.55.13.38h.4l-.32.23.12.38L0 .21l-.32.23.12-.38-.32-.23h.4z"/>
+    <use href="#s" x="1.7"/>
+    <use href="#s" x="3.4"/>
+    <use href="#s" x="5.1"/>
+    <use href="#s" x="6.8"/>
+    <use href="#s" x="8.5"/>
+    <use href="#s" x=".85" y="1"/>
+    <use href="#s" x="2.55" y="1"/>
+    <use href="#s" x="4.25" y="1"/>
+    <use href="#s" x="5.95" y="1"/>
+    <use href="#s" x="7.65" y="1"/>
+    <use href="#s" y="2"/>
+    <use href="#s" x="1.7" y="2"/>
+    <use href="#s" x="3.4" y="2"/>
+    <use href="#s" x="5.1" y="2"/>
+    <use href="#s" x="6.8" y="2"/>
+    <use href="#s" x="8.5" y="2"/>
+    <use href="#s" x=".85" y="3"/>
+    <use href="#s" x="2.55" y="3"/>
+    <use href="#s" x="4.25" y="3"/>
+    <use href="#s" x="5.95" y="3"/>
+    <use href="#s" x="7.65" y="3"/>
+    <use href="#s" y="4"/>
+    <use href="#s" x="1.7" y="4"/>
+    <use href="#s" x="3.4" y="4"/>
+    <use href="#s" x="5.1" y="4"/>
+    <use href="#s" x="6.8" y="4"/>
+    <use href="#s" x="8.5" y="4"/>
+    <use href="#s" x=".85" y="5"/>
+    <use href="#s" x="2.55" y="5"/>
+    <use href="#s" x="4.25" y="5"/>
+    <use href="#s" x="5.95" y="5"/>
+    <use href="#s" x="7.65" y="5"/>
+    <use href="#s" y="6"/>
+    <use href="#s" x="1.7" y="6"/>
+    <use href="#s" x="3.4" y="6"/>
+    <use href="#s" x="5.1" y="6"/>
+    <use href="#s" x="6.8" y="6"/>
+    <use href="#s" x="8.5" y="6"/>
+    <use href="#s" x=".85" y="7"/>
+    <use href="#s" x="2.55" y="7"/>
+    <use href="#s" x="4.25" y="7"/>
+    <use href="#s" x="5.95" y="7"/>
+    <use href="#s" x="7.65" y="7"/>
+    <use href="#s" y="8"/>
+    <use href="#s" x="1.7" y="8"/>
+    <use href="#s" x="3.4" y="8"/>
+    <use href="#s" x="5.1" y="8"/>
+    <use href="#s" x="6.8" y="8"/>
+    <use href="#s" x="8.5" y="8"/>
+  </g>
+</svg>
