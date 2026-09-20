@@ -23,6 +23,7 @@ public sealed class WindowsStartupModifier : IStartupModifier
     {
         try
         {
+            if (entry.IsCritical || entry.State == StartupState.Protected) return OperationResult.Failure("Questo elemento è protetto e non può essere modificato da BootLens.");
             return entry.Mechanism switch
             {
                 StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce => ChangeRegistry(entry, enable),

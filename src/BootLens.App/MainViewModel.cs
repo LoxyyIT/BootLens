@@ -170,7 +170,7 @@ public partial class MainViewModel : ObservableObject
     public string SelectedEntryScore => SelectedEntry is null ? "—" : FormatScore(_analysis.Analyze(SelectedEntry, null, Entries).Efficiency, Texts);
     public string LatestBootHint => BootMeasurements.Count == 0 ? Texts["BootDetected"] : Texts["LatestMeasurement"];
     public bool CanChangeSelected => !IsBusy && SelectedEntry is not null && CanChange(SelectedEntry);
-    public string SelectedActionText => SelectedEntry?.State == StartupState.Disabled ? Texts["Enable"] : Texts["Disable"];
+    public string SelectedActionText => SelectedEntry is null ? string.Empty : !CanChange(SelectedEntry) ? Texts["ProtectedSystemComponent"] : SelectedEntry.State == StartupState.Disabled ? Texts["Enable"] : Texts["Disable"];
     public string CurrentPageTitle => _localization.Get(SelectedPage);
     public string Tagline => _localization.CurrentLanguage switch { "it" => "Chiarezza sull’avvio", "es" => "Claridad del inicio", "fr" => "Clarté du démarrage", _ => "Startup clarity" };
     public string LightThemeLabel => _localization.CurrentLanguage switch { "it" => "Chiaro", "es" => "Claro", "fr" => "Clair", _ => "Light" };
@@ -675,6 +675,8 @@ public partial class MainViewModel : ObservableObject
     }
 
     private static bool CanChange(StartupEntry entry) => entry.Mechanism is StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce or StartupMechanism.StartupFolder or StartupMechanism.ScheduledTask or StartupMechanism.Service or StartupMechanism.Driver
+        && !entry.IsCritical
+        && entry.State != StartupState.Protected
         && !string.IsNullOrWhiteSpace(entry.Identifier ?? entry.ExecutablePath ?? entry.CommandLine);
 
     private static string MechanismKey(StartupMechanism mechanism) => mechanism switch
@@ -753,7 +755,7 @@ public partial class MainViewModel : ObservableObject
         public int ScoreValue => analysis.Analyze(Entry, null, allEntries.ToArray()).Efficiency.Value;
         public string Score => $"{ScoreValue}/100";
         public string Trust => Entry.IsMicrosoft ? localization.Get("Microsoft") : Entry.IsSigned ? localization.Get("PublisherVerified") : localization.Get("SignatureUnverified");
-        public string ToggleText => Entry.State == StartupState.Disabled ? localization.Get("Enable") : localization.Get("Disable");
+        public string ToggleText => !CanChange ? localization.Get("ProtectedSystemComponent") : Entry.State == StartupState.Disabled ? localization.Get("Enable") : localization.Get("Disable");
         public bool IsChecked => Entry.State is StartupState.Enabled or StartupState.Protected;
         public bool CanChange => MainViewModel.CanChange(Entry);
         public bool IsSystemItem => Entry.IsMicrosoft || Entry.IsCritical;

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3 - 2026-09-20
+
+- Protected startup entries are now locked before an action reaches Windows.
+- The action label explains why a protected entry cannot be changed.
+- The modifier keeps the same protection check as a second safety boundary.
+
 ## 0.2.2 - 2026-09-20
 
 - Re-enabling Registry and Startup folder entries no longer depends only on a BootLens backup.
