@@ -31,6 +31,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ThemeManager _themeManager;
     private readonly UpdateService _updateService = new();
     private bool _loadingSettings;
+    private bool _lastScanSucceeded;
 
     public MainViewModel(IBootLensRepository repository, IStartupScanner scanner, IStartupModifier modifier, ChangeDetection changeDetection, StartupAnalysisService analysis, LocalizationService localization, ThemeManager themeManager)
     {
@@ -169,7 +170,7 @@ public partial class MainViewModel : ObservableObject
     public string SelectedEntryIdentifier => SelectedEntry?.Identifier ?? Texts["NotAvailable"];
     public string SelectedEntryScore => SelectedEntry is null ? "—" : FormatScore(_analysis.Analyze(SelectedEntry, null, Entries).Efficiency, Texts);
     public string LatestBootHint => BootMeasurements.Count == 0 ? Texts["BootDetected"] : Texts["LatestMeasurement"];
-    public bool CanChangeSelected => SelectedEntry is not null && CanChange(SelectedEntry);
+    public bool CanChangeSelected => !IsBusy && SelectedEntry is not null && CanChange(SelectedEntry);
     public string SelectedActionText => SelectedEntry?.State == StartupState.Disabled ? Texts["Enable"] : Texts["Disable"];
     public string CurrentPageTitle => _localization.Get(SelectedPage);
     public string Tagline => _localization.CurrentLanguage switch { "it" => "Chiarezza sull’avvio", "es" => "Claridad del inicio", "fr" => "Clarté du démarrage", _ => "Startup clarity" };
@@ -219,6 +220,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (IsBusy) return;
         IsBusy = true;
+        _lastScanSucceeded = false;
         StatusText = Texts["Scanning"];
         try
         {
@@ -233,6 +235,7 @@ public partial class MainViewModel : ObservableObject
             await LoadSecondaryDataAsync();
             await UpdateSummaryAsync();
             StatusText = $"{current.Count} {Texts["ActiveItems"].ToLowerInvariant()} · {DateTime.Now:t}";
+            _lastScanSucceeded = true;
         }
         catch (OperationCanceledException) { StatusText = Texts["Cancel"]; }
         catch (Exception exception) { StatusText = exception.Message; }
@@ -248,17 +251,18 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ToggleRowAsync(StartupEntryRow? row)
     {
-        if (row is null || !row.CanChange) return;
+        if (IsBusy || row is null || !row.CanChange) return;
         await ToggleEntryAsync(row.Entry);
     }
 
     private async Task ToggleEntryAsync(StartupEntry entry)
     {
+        if (IsBusy) return;
         var actionKey = entry.State == StartupState.Disabled ? "Enable" : "Disable";
         var shouldConfirm = await _repository.GetSettingAsync(ConfirmActionsKey) != "false";
         if (shouldConfirm)
         {
-            var windowsManaged = entry.IsMicrosoft || entry.IsCritical || entry.Mechanism is StartupMechanism.Service or StartupMechanism.ScheduledTask || (entry.Mechanism is StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce && entry.SourceLocation?.StartsWith("LocalMachine\\", StringComparison.OrdinalIgnoreCase) == true);
+            var windowsManaged = entry.IsMicrosoft || entry.IsCritical || entry.Mechanism is StartupMechanism.Service or StartupMechanism.Driver or StartupMechanism.ScheduledTask || entry.SourceLocation?.Contains("LocalMachine\\", StringComparison.OrdinalIgnoreCase) == true;
             var dialog = new ActionConfirmationWindow(
                 Texts["ConfirmActionTitle"],
                 string.Format(Texts["ConfirmActionBody"], Texts[actionKey].ToLowerInvariant(), entry.DisplayName),
@@ -280,13 +284,22 @@ public partial class MainViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var result = entry.State == StartupState.Disabled ? await _modifier.EnableAsync(entry) : await _modifier.DisableAsync(entry);
+            var enabling = entry.State == StartupState.Disabled;
+            var result = enabling ? await _modifier.EnableAsync(entry) : await _modifier.DisableAsync(entry);
             if (result.Succeeded && result.Verified)
             {
                 if (result.UndoRecord is not null) await _repository.SaveUndoAsync(result.UndoRecord);
+                ApplyEntryState(entry, enabling ? StartupState.Enabled : StartupState.Disabled);
                 StatusText = result.Message;
                 IsBusy = false;
                 await ScanAsync();
+                if (_lastScanSucceeded)
+                {
+                    var refreshed = Entries.FirstOrDefault(current => current.Id == entry.Id);
+                    StatusText = refreshed?.State == (enabling ? StartupState.Enabled : StartupState.Disabled)
+                        ? $"{result.Message} ✓"
+                        : $"{result.Message} · {Texts["NeedsReview"]}";
+                }
             }
             else StatusText = result.Message;
         }
@@ -488,6 +501,11 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsStartupFolderFilter));
     }
     partial void OnSortModeChanged(string value) => OnPropertyChanged(nameof(VisibleEntries));
+    partial void OnIsBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanChangeSelected));
+        RebuildRows();
+    }
     partial void OnConfirmActionsEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(ConfirmActionsKey, value ? "true" : "false"); }
     partial void OnAutoScanOnLaunchEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(AutoScanOnLaunchKey, value ? "true" : "false"); }
     partial void OnSnapshotBeforeChangesEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(SnapshotBeforeChangesKey, value ? "true" : "false"); }
@@ -600,7 +618,20 @@ public partial class MainViewModel : ObservableObject
         _ => true
     };
 
-    private static bool CanChange(StartupEntry entry) => entry.Mechanism is StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce or StartupMechanism.StartupFolder or StartupMechanism.ScheduledTask or StartupMechanism.Service
+    private void ApplyEntryState(StartupEntry entry, StartupState state)
+    {
+        var index = Entries.IndexOf(entry);
+        if (index < 0) return;
+        var updated = entry with { State = state, IsBroken = false };
+        Entries[index] = updated;
+        if (SelectedEntry?.Id == entry.Id) SelectedEntry = updated;
+        RebuildRows();
+        OnPropertyChanged(nameof(VisibleEntries));
+        _ = UpdateSummaryAsync();
+        NotifySelectedEntry();
+    }
+
+    private static bool CanChange(StartupEntry entry) => entry.Mechanism is StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce or StartupMechanism.StartupFolder or StartupMechanism.ScheduledTask or StartupMechanism.Service or StartupMechanism.Driver
         && !string.IsNullOrWhiteSpace(entry.Identifier ?? entry.ExecutablePath ?? entry.CommandLine);
 
     private static string MechanismKey(StartupMechanism mechanism) => mechanism switch

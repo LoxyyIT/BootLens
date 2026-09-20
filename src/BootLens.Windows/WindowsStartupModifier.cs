@@ -28,7 +28,7 @@ public sealed class WindowsStartupModifier : IStartupModifier
                 StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce => ChangeRegistry(entry, enable),
                 StartupMechanism.StartupFolder => ChangeStartupFolder(entry, enable),
                 StartupMechanism.ScheduledTask => ChangeScheduledTask(entry, enable, cancellationToken),
-                StartupMechanism.Service => ChangeService(entry, enable, cancellationToken),
+                StartupMechanism.Service or StartupMechanism.Driver => ChangeService(entry, enable, cancellationToken),
                 _ => OperationResult.Failure("Questo meccanismo di avvio non espone ancora un comando Windows reversibile sicuro.")
             };
         }
@@ -169,14 +169,16 @@ public sealed class WindowsStartupModifier : IStartupModifier
     private static RegistryKey? OpenSourceKey(string? source, bool writable)
     {
         var canonical = CanonicalSource(source);
-        if (canonical.StartsWith("CurrentUser\\", StringComparison.OrdinalIgnoreCase)) return Registry.CurrentUser.OpenSubKey(canonical[12..], writable);
-        if (canonical.StartsWith("LocalMachine\\", StringComparison.OrdinalIgnoreCase)) return Registry.LocalMachine.OpenSubKey(canonical[13..], writable);
+        var view = source?.StartsWith("Registry32:", StringComparison.OrdinalIgnoreCase) == true ? RegistryView.Registry32 : RegistryView.Registry64;
+        if (canonical.StartsWith("CurrentUser\\", StringComparison.OrdinalIgnoreCase)) return RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, view).OpenSubKey(canonical[12..], writable);
+        if (canonical.StartsWith("LocalMachine\\", StringComparison.OrdinalIgnoreCase)) return RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view).OpenSubKey(canonical[13..], writable);
         return null;
     }
 
     private static string CanonicalSource(string? source)
     {
         var value = source?.Trim() ?? string.Empty;
+        if (value.StartsWith("Registry32:", StringComparison.OrdinalIgnoreCase) || value.StartsWith("Registry64:", StringComparison.OrdinalIgnoreCase)) value = value[(value.IndexOf(':') + 1)..];
         if (value.StartsWith("HKEY_CURRENT_USER\\", StringComparison.OrdinalIgnoreCase) || value.StartsWith("HKCU\\", StringComparison.OrdinalIgnoreCase)) return "CurrentUser\\" + value[(value.IndexOf('\\') + 1)..];
         if (value.StartsWith("HKEY_LOCAL_MACHINE\\", StringComparison.OrdinalIgnoreCase) || value.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase)) return "LocalMachine\\" + value[(value.IndexOf('\\') + 1)..];
         return value;
@@ -195,7 +197,7 @@ public sealed class WindowsStartupModifier : IStartupModifier
 
     private static string BackupKey(StartupEntry entry)
     {
-        var identity = $"{entry.Mechanism}|{entry.Identifier}";
+        var identity = $"{entry.Mechanism}|{entry.Identifier}|{entry.SourceLocation}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
     }
 

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using System.Collections.Concurrent;
 using Microsoft.Win32;
 using BootLens.Core.Domain;
 using BootLens.Core.Services;
@@ -9,6 +10,7 @@ namespace BootLens.Windows;
 
 public sealed class WindowsStartupScanner : IStartupScanner
 {
+    private static readonly ConcurrentDictionary<string, CachedInspection> InspectionCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly (RegistryHive Hive, string Path, StartupMechanism Mechanism, RegistryView View)[] RunLocations =
     [
         (RegistryHive.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", StartupMechanism.RegistryRun, RegistryView.Registry64),
@@ -20,7 +22,9 @@ public sealed class WindowsStartupScanner : IStartupScanner
         (RegistryHive.LocalMachine, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", StartupMechanism.RegistryRun, RegistryView.Registry32),
         (RegistryHive.LocalMachine, "Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce", StartupMechanism.RegistryRunOnce, RegistryView.Registry32),
         (RegistryHive.LocalMachine, "Software\\Microsoft\\Windows\\CurrentVersion\\RunServices", StartupMechanism.RegistryRun, RegistryView.Registry64),
-        (RegistryHive.LocalMachine, "Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce", StartupMechanism.RegistryRunOnce, RegistryView.Registry64)
+        (RegistryHive.LocalMachine, "Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce", StartupMechanism.RegistryRunOnce, RegistryView.Registry64),
+        (RegistryHive.LocalMachine, "Software\\Microsoft\\Windows\\CurrentVersion\\RunServices", StartupMechanism.RegistryRun, RegistryView.Registry32),
+        (RegistryHive.LocalMachine, "Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce", StartupMechanism.RegistryRunOnce, RegistryView.Registry32)
     ];
 
     public Task<IReadOnlyList<StartupEntry>> ScanAsync(CancellationToken cancellationToken = default)
@@ -49,7 +53,7 @@ public sealed class WindowsStartupScanner : IStartupScanner
             token.ThrowIfCancellationRequested();
             var command = key.GetValue(valueName)?.ToString();
             if (string.IsNullOrWhiteSpace(command)) continue;
-            entries.Add(CreateEntry(valueName, command, mechanism, $"{hive}\\{path}", valueName, isDisabled: false));
+            entries.Add(CreateEntry(valueName, command, mechanism, FormatRegistrySource(hive, path, view), valueName, isDisabled: false));
         }
     }
 
@@ -113,6 +117,8 @@ public sealed class WindowsStartupScanner : IStartupScanner
     }
 
     private static bool IsAdvancedSurface(StartupMechanism mechanism) => mechanism is not (StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce or StartupMechanism.StartupFolder or StartupMechanism.Service or StartupMechanism.ScheduledTask);
+
+    private static string FormatRegistrySource(RegistryHive hive, string path, RegistryView view) => $"{view}:{hive}\\{path}";
 
     private static StartupEntry CreateSurfaceEntry(string name, string value, StartupMechanism mechanism, string source, string identifier)
     {
@@ -207,33 +213,16 @@ public sealed class WindowsStartupScanner : IStartupScanner
                 token.ThrowIfCancellationRequested();
                 var columns = ParseCsv(row);
                 if (columns.Count < 3) continue;
-                var taskName = columns[0].Trim('"');
-                var taskToRun = columns.FirstOrDefault(column => column.Contains("\\", StringComparison.Ordinal) && column.Contains(".exe", StringComparison.OrdinalIgnoreCase))?.Trim('"');
+                var taskName = columns.Count > 1 ? columns[1].Trim('"') : string.Empty;
+                var taskToRun = columns.Count > 8 && columns[8].Contains(".exe", StringComparison.OrdinalIgnoreCase) ? columns[8].Trim('"') : columns.FirstOrDefault(column => column.Contains("\\", StringComparison.Ordinal) && column.Contains(".exe", StringComparison.OrdinalIgnoreCase))?.Trim('"');
                 if (string.IsNullOrWhiteSpace(taskName)) continue;
-                var taskOutput = QueryTask(taskName);
-                var disabled = ContainsDisabled(taskOutput);
+                var taskStatus = string.Join(" ", columns.Skip(3).Take(9));
+                var disabled = ContainsDisabled(taskStatus);
                 entries.Add(new StartupEntry { Id = $"task:{taskName}", DisplayName = taskName.TrimStart('\\'), Mechanism = StartupMechanism.ScheduledTask, State = disabled ? StartupState.Disabled : StartupState.Enabled, Identifier = taskName, CommandLine = taskToRun, Trigger = "Task Scheduler", SourceLocation = "Task Scheduler" });
             }
         }
         catch (Exception) when (OperatingSystem.IsWindows())
         {
-        }
-    }
-
-    private static string QueryTask(string taskName)
-    {
-        try
-        {
-            var startInfo = new ProcessStartInfo("schtasks.exe", $"/Query /TN \"{taskName.Replace("\"", "\\\"")}\" /FO LIST") { UseShellExecute = false, RedirectStandardOutput = true, CreateNoWindow = true };
-            using var process = Process.Start(startInfo);
-            if (process is null) return string.Empty;
-            var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(3000);
-            return output;
-        }
-        catch
-        {
-            return string.Empty;
         }
     }
 
@@ -258,7 +247,7 @@ public sealed class WindowsStartupScanner : IStartupScanner
     {
         var path = ExtractExecutablePath(command);
         var file = InspectFile(path);
-        var id = $"{mechanism}:{identifier}:{path ?? command}";
+        var id = $"{mechanism}:{identifier}:{source}:{path ?? command}";
         return new StartupEntry { Id = id, DisplayName = name, Mechanism = mechanism, State = isDisabled ? StartupState.Disabled : file.IsCritical ? StartupState.Protected : file.IsBroken ? StartupState.Broken : StartupState.Enabled, Publisher = file.Publisher, Description = file.Description, ExecutablePath = path, CommandLine = command, Identifier = identifier, Version = file.Version, Sha256 = file.Sha256, IsSigned = file.IsSigned, IsMicrosoft = file.IsMicrosoft, IsCritical = file.IsCritical, IsBroken = file.IsBroken, SourceLocation = source };
     }
 
@@ -289,11 +278,15 @@ public sealed class WindowsStartupScanner : IStartupScanner
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return new FileInspection(null, null, null, null, false, false, false, true);
         try
         {
-            var info = FileVersionInfo.GetVersionInfo(path!);
+            var fileInfo = new FileInfo(path);
+            if (InspectionCache.TryGetValue(path, out var cached) && cached.Length == fileInfo.Length && cached.LastWriteUtcTicks == fileInfo.LastWriteTimeUtc.Ticks) return cached.Result;
+            var info = FileVersionInfo.GetVersionInfo(path);
             var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
             var publisher = info.CompanyName;
             var microsoft = publisher?.Contains("Microsoft", StringComparison.OrdinalIgnoreCase) == true;
-            return new FileInspection(info.FileName, publisher, info.FileDescription, info.FileVersion, false, microsoft, microsoft, false) with { Sha256 = hash };
+            var result = new FileInspection(info.FileName, publisher, info.FileDescription, info.FileVersion, false, microsoft, microsoft, false) with { Sha256 = hash };
+            InspectionCache[path] = new CachedInspection(fileInfo.Length, fileInfo.LastWriteTimeUtc.Ticks, result);
+            return result;
         }
         catch (IOException) { return new FileInspection(path, null, null, null, false, false, false, true); }
         catch (UnauthorizedAccessException) { return new FileInspection(path, null, null, null, false, false, false, true); }
@@ -303,4 +296,6 @@ public sealed class WindowsStartupScanner : IStartupScanner
     {
         public string? Sha256 { get; init; }
     }
+
+    private sealed record CachedInspection(long Length, long LastWriteUtcTicks, FileInspection Result);
 }
