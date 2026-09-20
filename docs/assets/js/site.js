@@ -857,16 +857,25 @@ function applyLanguage(language) {
 }
 
 function applyReleaseUi(copy) {
+  const heroPrimary = document.getElementById("hero-primary");
   const primary = document.getElementById("download-primary");
   const downloadCopy = document.getElementById("download-copy");
   const heroNote = document.getElementById("hero-note");
   if (!primary || !downloadCopy || !heroNote) return;
   if (latestRelease) {
+    if (heroPrimary) {
+      heroPrimary.href = latestRelease.downloadUrl;
+      heroPrimary.textContent = copy.downloadRelease;
+    }
     primary.href = latestRelease.downloadUrl;
     primary.textContent = copy.downloadRelease;
     downloadCopy.textContent = copy.downloadReleaseCopy;
     heroNote.textContent = copy.heroReleaseNote.replace("{0}", latestRelease.version);
     return;
+  }
+  if (heroPrimary) {
+    heroPrimary.href = "#download";
+    heroPrimary.textContent = copy.ctaBuild;
   }
   primary.href = releaseRepositoryUrl;
   primary.textContent = copy.openGithub;
