@@ -135,6 +135,14 @@ public sealed class LocalizationService
         };
         foreach (var language in filterLabels) foreach (var pair in language.Value) ((Dictionary<string, string>)Resources[language.Key])[pair.Key] = pair.Value;
         foreach (var language in mechanismLabels) foreach (var pair in language.Value) ((Dictionary<string, string>)Resources[language.Key])[pair.Key] = pair.Value;
+        var changeLabels = new Dictionary<string, Dictionary<string, string>>
+        {
+            ["en"] = new() { ["ChangeAdded"] = "Added", ["ChangeRemoved"] = "Removed", ["ChangeModified"] = "Modified", ["ChangeState"] = "State changed", ["ChangeAction"] = "Manual action", ["ChangeOther"] = "Change", ["BeforeLabel"] = "Before", ["AfterLabel"] = "After", ["PathLabel"] = "Path", ["CommandLabel"] = "Command", ["SourceLabel"] = "Source", ["ResultLabel"] = "Result", ["VerifiedChange"] = "Verified", ["DetectedChange"] = "Detected" },
+            ["it"] = new() { ["ChangeAdded"] = "Aggiunto", ["ChangeRemoved"] = "Rimosso", ["ChangeModified"] = "Modificato", ["ChangeState"] = "Stato cambiato", ["ChangeAction"] = "Azione manuale", ["ChangeOther"] = "Modifica", ["BeforeLabel"] = "Prima", ["AfterLabel"] = "Dopo", ["PathLabel"] = "Percorso", ["CommandLabel"] = "Comando", ["SourceLabel"] = "Origine", ["ResultLabel"] = "Esito", ["VerifiedChange"] = "Verificata", ["DetectedChange"] = "Rilevata" },
+            ["es"] = new() { ["ChangeAdded"] = "Añadido", ["ChangeRemoved"] = "Eliminado", ["ChangeModified"] = "Modificado", ["ChangeState"] = "Estado cambiado", ["ChangeAction"] = "Acción manual", ["ChangeOther"] = "Cambio", ["BeforeLabel"] = "Antes", ["AfterLabel"] = "Después", ["PathLabel"] = "Ruta", ["CommandLabel"] = "Comando", ["SourceLabel"] = "Origen", ["ResultLabel"] = "Resultado", ["VerifiedChange"] = "Verificado", ["DetectedChange"] = "Detectado" },
+            ["fr"] = new() { ["ChangeAdded"] = "Ajouté", ["ChangeRemoved"] = "Supprimé", ["ChangeModified"] = "Modifié", ["ChangeState"] = "État modifié", ["ChangeAction"] = "Action manuelle", ["ChangeOther"] = "Modification", ["BeforeLabel"] = "Avant", ["AfterLabel"] = "Après", ["PathLabel"] = "Chemin", ["CommandLabel"] = "Commande", ["SourceLabel"] = "Origine", ["ResultLabel"] = "Résultat", ["VerifiedChange"] = "Vérifiée", ["DetectedChange"] = "Détectée" }
+        };
+        foreach (var language in changeLabels) foreach (var pair in language.Value) ((Dictionary<string, string>)Resources[language.Key])[pair.Key] = pair.Value;
         var settings = new Dictionary<string, Dictionary<string, string>>
         {
             ["en"] = new()

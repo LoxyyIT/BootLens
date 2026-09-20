@@ -49,6 +49,7 @@ public partial class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(Tagline));
             OnPropertyChanged(nameof(LightThemeLabel));
             OnPropertyChanged(nameof(LatestBootHint));
+            foreach (var change in RecentChanges) change.RefreshLocalization();
             NotifySelectedEntry();
             OnPropertyChanged(nameof(VisibleEntries));
         };
@@ -58,7 +59,7 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<StartupEntry> Entries { get; } = [];
     public ObservableCollection<StartupEntryRow> EntryRows { get; } = [];
     public ObservableCollection<BootMeasurement> BootMeasurements { get; } = [];
-    public ObservableCollection<StartupChange> RecentChanges { get; } = [];
+    public ObservableCollection<ChangeLogRow> RecentChanges { get; } = [];
     public ObservableCollection<Snapshot> Snapshots { get; } = [];
     public IEnumerable<StartupEntryRow> VisibleEntries
     {
@@ -288,6 +289,9 @@ public partial class MainViewModel : ObservableObject
                 if (result.UndoRecord is not null) await _repository.SaveUndoAsync(result.UndoRecord);
                 ApplyEntryState(entry, enabling ? StartupState.Enabled : StartupState.Disabled);
                 await _repository.SaveEntriesAsync(Entries.ToArray());
+                var change = CreateActionChange(entry, entry.State, enabling ? StartupState.Enabled : StartupState.Disabled, result);
+                await _repository.SaveChangesAsync([change]);
+                AddRecentChange(change);
                 await UpdateSummaryAsync();
                 StatusText = $"{result.Message} ✓";
             }
@@ -339,6 +343,7 @@ public partial class MainViewModel : ObservableObject
 
         IsBusy = true;
         var succeeded = 0;
+        var actionChanges = new List<StartupChange>();
         try
         {
             foreach (var (target, current) in changes)
@@ -347,9 +352,15 @@ public partial class MainViewModel : ObservableObject
                 if (!result.Succeeded || !result.Verified) continue;
                 if (result.UndoRecord is not null) await _repository.SaveUndoAsync(result.UndoRecord);
                 ApplyEntryState(current!, target.State);
+                actionChanges.Add(CreateActionChange(current!, current!.State, target.State, result));
                 succeeded++;
             }
             await _repository.SaveEntriesAsync(Entries.ToArray());
+            if (actionChanges.Count > 0)
+            {
+                await _repository.SaveChangesAsync(actionChanges);
+                foreach (var change in actionChanges) AddRecentChange(change);
+            }
             await UpdateSummaryAsync();
             StatusText = succeeded == changes.Length
                 ? $"{Texts["RestoreSnapshot"]} ✓"
@@ -613,7 +624,7 @@ public partial class MainViewModel : ObservableObject
         BootMeasurements.Clear();
         foreach (var item in await _repository.GetBootMeasurementsAsync()) BootMeasurements.Add(item);
         RecentChanges.Clear();
-        foreach (var item in await _repository.GetRecentChangesAsync()) RecentChanges.Add(item);
+        foreach (var item in await _repository.GetRecentChangesAsync()) RecentChanges.Add(new ChangeLogRow(item, _localization));
         Snapshots.Clear();
         foreach (var item in await _repository.GetSnapshotsAsync()) Snapshots.Add(item);
     }
@@ -625,6 +636,32 @@ public partial class MainViewModel : ObservableObject
         RebuildRows();
         OnPropertyChanged(nameof(VisibleEntries));
     }
+
+    private void AddRecentChange(StartupChange change)
+    {
+        RecentChanges.Insert(0, new ChangeLogRow(change, _localization));
+        while (RecentChanges.Count > 100) RecentChanges.RemoveAt(RecentChanges.Count - 1);
+    }
+
+    private static StartupChange CreateActionChange(StartupEntry entry, StartupState previousState, StartupState currentState, OperationResult result) => new()
+    {
+        EntryId = entry.Id,
+        ChangeType = "Action",
+        Summary = result.Message,
+        DetectedUtc = DateTimeOffset.UtcNow,
+        DisplayName = entry.DisplayName,
+        Mechanism = entry.Mechanism,
+        PreviousState = previousState,
+        CurrentState = currentState,
+        PreviousPath = entry.ExecutablePath,
+        CurrentPath = entry.ExecutablePath,
+        PreviousCommand = entry.CommandLine,
+        CurrentCommand = entry.CommandLine,
+        Publisher = entry.Publisher,
+        SourceLocation = entry.SourceLocation,
+        Verified = result.Verified,
+        ResultMessage = result.Message
+    };
 
     private void RebuildRows()
     {
@@ -739,6 +776,37 @@ public partial class MainViewModel : ObservableObject
     {
         var value = await _repository.GetSettingAsync(key);
         return value is null ? fallback : string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public sealed class ChangeLogRow(StartupChange change, LocalizationService localization) : ObservableObject
+    {
+        private StartupChange Change { get; } = change;
+        public string DisplayName => Change.DisplayName ?? Change.EntryId;
+        public string TypeLabel => localization.Get(Change.ChangeType switch
+        {
+            "Added" => "ChangeAdded",
+            "Removed" => "ChangeRemoved",
+            "Modified" => "ChangeModified",
+            "StateChanged" => "ChangeState",
+            "Action" => "ChangeAction",
+            _ => "ChangeOther"
+        });
+        public string Summary => Change.Summary;
+        public string Timestamp => Change.DetectedUtc.ToLocalTime().ToString("g");
+        public string Mechanism => $"{localization.Get("Mechanism")}: {(Change.Mechanism is { } mechanism ? localization.Get(MechanismKey(mechanism)) : localization.Get("NotAvailable"))}";
+        public string Publisher => $"{localization.Get("Publisher")}: {ValueOrDash(Change.Publisher)}";
+        public string Source => $"{localization.Get("SourceLabel")}: {ValueOrDash(Change.SourceLocation)}";
+        public string BeforeState => $"{localization.Get("BeforeLabel")}: {FormatState(Change.PreviousState)}";
+        public string AfterState => $"{localization.Get("AfterLabel")}: {FormatState(Change.CurrentState)}";
+        public string Path => $"{localization.Get("PathLabel")}: {ValueOrDash(Change.CurrentPath ?? Change.PreviousPath)}";
+        public string Command => $"{localization.Get("CommandLabel")}: {ValueOrDash(Change.CurrentCommand ?? Change.PreviousCommand)}";
+        public string Result => $"{localization.Get("ResultLabel")}: {ValueOrDash(Change.ResultMessage ?? Change.Summary)}";
+        public string Verification => Change.Verified ? localization.Get("VerifiedChange") : localization.Get("DetectedChange");
+
+        public void RefreshLocalization() => OnPropertyChanged(string.Empty);
+
+        private string FormatState(StartupState? state) => state is { } value ? localization.Get(StateKey(value)) : localization.Get("NotAvailable");
+        private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
     }
 
     public sealed class StartupEntryRow(StartupEntry entry, LocalizationService localization, StartupAnalysisService analysis, IReadOnlyCollection<StartupEntry> allEntries)

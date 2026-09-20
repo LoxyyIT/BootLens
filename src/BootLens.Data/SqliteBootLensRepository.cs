@@ -26,13 +26,38 @@ public sealed class SqliteBootLensRepository : IBootLensRepository
             CREATE TABLE IF NOT EXISTS startup_entries (id TEXT NOT NULL PRIMARY KEY, display_name TEXT NOT NULL, mechanism INTEGER NOT NULL, state INTEGER NOT NULL, publisher TEXT, description TEXT, executable_path TEXT, command_line TEXT, identifier TEXT, version TEXT, sha256 TEXT, is_signed INTEGER NOT NULL, is_microsoft INTEGER NOT NULL, is_critical INTEGER NOT NULL, is_broken INTEGER NOT NULL, first_seen_utc TEXT NOT NULL, last_seen_utc TEXT NOT NULL, cpu_ms REAL, disk_io_bytes REAL, peak_memory_bytes REAL, trigger TEXT, source_location TEXT);
             CREATE TABLE IF NOT EXISTS snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_utc TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS snapshot_entries (snapshot_id INTEGER NOT NULL, entry_id TEXT NOT NULL, display_name TEXT NOT NULL, mechanism INTEGER NOT NULL, state INTEGER NOT NULL, publisher TEXT, executable_path TEXT, command_line TEXT, is_signed INTEGER NOT NULL, is_microsoft INTEGER NOT NULL, is_critical INTEGER NOT NULL, is_broken INTEGER NOT NULL, PRIMARY KEY(snapshot_id, entry_id));
-            CREATE TABLE IF NOT EXISTS startup_changes (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id TEXT NOT NULL, change_type TEXT NOT NULL, summary TEXT NOT NULL, detected_utc TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS startup_changes (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id TEXT NOT NULL, change_type TEXT NOT NULL, summary TEXT NOT NULL, detected_utc TEXT NOT NULL, display_name TEXT, mechanism INTEGER, previous_state INTEGER, current_state INTEGER, previous_path TEXT, current_path TEXT, previous_command TEXT, current_command TEXT, publisher TEXT, source_location TEXT, verified INTEGER NOT NULL DEFAULT 0, result_message TEXT);
             CREATE TABLE IF NOT EXISTS undo_records (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id TEXT NOT NULL, action TEXT NOT NULL, original_state TEXT NOT NULL, created_utc TEXT NOT NULL, is_reverted INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE IF NOT EXISTS settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS boot_measurements (id INTEGER PRIMARY KEY AUTOINCREMENT, started_utc TEXT NOT NULL, duration_seconds REAL NOT NULL, source TEXT, configuration_fingerprint TEXT NOT NULL);
             INSERT OR IGNORE INTO schema_migrations(version) VALUES (1);
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
+        await EnsureStartupChangeColumnsAsync(connection, cancellationToken);
+    }
+
+    private static async Task EnsureStartupChangeColumnsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using (var tableInfo = connection.CreateCommand())
+        {
+            tableInfo.CommandText = "PRAGMA table_info(startup_changes)";
+            await using var reader = await tableInfo.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken)) existing.Add(reader.GetString(1));
+        }
+
+        var columns = new (string Name, string Definition)[]
+        {
+            ("display_name", "TEXT"), ("mechanism", "INTEGER"), ("previous_state", "INTEGER"), ("current_state", "INTEGER"),
+            ("previous_path", "TEXT"), ("current_path", "TEXT"), ("previous_command", "TEXT"), ("current_command", "TEXT"),
+            ("publisher", "TEXT"), ("source_location", "TEXT"), ("verified", "INTEGER NOT NULL DEFAULT 0"), ("result_message", "TEXT")
+        };
+        foreach (var (name, definition) in columns.Where(column => !existing.Contains(column.Name)))
+        {
+            await using var alter = connection.CreateCommand();
+            alter.CommandText = $"ALTER TABLE startup_changes ADD COLUMN {name} {definition}";
+            await alter.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     public async Task SaveEntriesAsync(IReadOnlyCollection<StartupEntry> entries, CancellationToken cancellationToken = default)
@@ -129,8 +154,8 @@ public sealed class SqliteBootLensRepository : IBootLensRepository
         foreach (var change in changes)
         {
             await using var command = connection.CreateCommand();
-            command.CommandText = "INSERT INTO startup_changes(entry_id,change_type,summary,detected_utc) VALUES($id,$type,$summary,$detected)";
-            command.Parameters.AddWithValue("$id", change.EntryId); command.Parameters.AddWithValue("$type", change.ChangeType); command.Parameters.AddWithValue("$summary", change.Summary); command.Parameters.AddWithValue("$detected", change.DetectedUtc.ToString("O"));
+            command.CommandText = "INSERT INTO startup_changes(entry_id,change_type,summary,detected_utc,display_name,mechanism,previous_state,current_state,previous_path,current_path,previous_command,current_command,publisher,source_location,verified,result_message) VALUES($id,$type,$summary,$detected,$name,$mechanism,$previous_state,$current_state,$previous_path,$current_path,$previous_command,$current_command,$publisher,$source,$verified,$result)";
+            command.Parameters.AddWithValue("$id", change.EntryId); command.Parameters.AddWithValue("$type", change.ChangeType); command.Parameters.AddWithValue("$summary", change.Summary); command.Parameters.AddWithValue("$detected", change.DetectedUtc.ToString("O")); command.Parameters.AddWithValue("$name", (object?)change.DisplayName ?? DBNull.Value); command.Parameters.AddWithValue("$mechanism", change.Mechanism is { } mechanism ? (object)(int)mechanism : DBNull.Value); command.Parameters.AddWithValue("$previous_state", change.PreviousState is { } previousState ? (object)(int)previousState : DBNull.Value); command.Parameters.AddWithValue("$current_state", change.CurrentState is { } currentState ? (object)(int)currentState : DBNull.Value); command.Parameters.AddWithValue("$previous_path", (object?)change.PreviousPath ?? DBNull.Value); command.Parameters.AddWithValue("$current_path", (object?)change.CurrentPath ?? DBNull.Value); command.Parameters.AddWithValue("$previous_command", (object?)change.PreviousCommand ?? DBNull.Value); command.Parameters.AddWithValue("$current_command", (object?)change.CurrentCommand ?? DBNull.Value); command.Parameters.AddWithValue("$publisher", (object?)change.Publisher ?? DBNull.Value); command.Parameters.AddWithValue("$source", (object?)change.SourceLocation ?? DBNull.Value); command.Parameters.AddWithValue("$verified", change.Verified ? 1 : 0); command.Parameters.AddWithValue("$result", (object?)change.ResultMessage ?? DBNull.Value);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
     }
@@ -139,10 +164,15 @@ public sealed class SqliteBootLensRepository : IBootLensRepository
     {
         await using var connection = await OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT entry_id,change_type,summary,detected_utc FROM startup_changes ORDER BY detected_utc DESC LIMIT 100";
+        command.CommandText = "SELECT entry_id,change_type,summary,detected_utc,display_name,mechanism,previous_state,current_state,previous_path,current_path,previous_command,current_command,publisher,source_location,verified,result_message FROM startup_changes ORDER BY detected_utc DESC, id DESC LIMIT 100";
         var result = new List<StartupChange>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken)) result.Add(new StartupChange { EntryId = reader.GetString(0), ChangeType = reader.GetString(1), Summary = reader.GetString(2), DetectedUtc = DateTimeOffset.Parse(reader.GetString(3)) });
+        while (await reader.ReadAsync(cancellationToken)) result.Add(new StartupChange
+        {
+            EntryId = reader.GetString(0), ChangeType = reader.GetString(1), Summary = reader.GetString(2), DetectedUtc = DateTimeOffset.Parse(reader.GetString(3)),
+            DisplayName = ReadString(reader, 4), Mechanism = reader.IsDBNull(5) ? null : (StartupMechanism)reader.GetInt32(5), PreviousState = reader.IsDBNull(6) ? null : (StartupState)reader.GetInt32(6), CurrentState = reader.IsDBNull(7) ? null : (StartupState)reader.GetInt32(7),
+            PreviousPath = ReadString(reader, 8), CurrentPath = ReadString(reader, 9), PreviousCommand = ReadString(reader, 10), CurrentCommand = ReadString(reader, 11), Publisher = ReadString(reader, 12), SourceLocation = ReadString(reader, 13), Verified = reader.GetInt32(14) == 1, ResultMessage = ReadString(reader, 15)
+        });
         return result;
     }
 

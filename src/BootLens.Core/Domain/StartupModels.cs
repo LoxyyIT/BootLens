@@ -112,4 +112,16 @@ public sealed record StartupChange
     public required string ChangeType { get; init; }
     public required string Summary { get; init; }
     public DateTimeOffset DetectedUtc { get; init; }
+    public string? DisplayName { get; init; }
+    public StartupMechanism? Mechanism { get; init; }
+    public StartupState? PreviousState { get; init; }
+    public StartupState? CurrentState { get; init; }
+    public string? PreviousPath { get; init; }
+    public string? CurrentPath { get; init; }
+    public string? PreviousCommand { get; init; }
+    public string? CurrentCommand { get; init; }
+    public string? Publisher { get; init; }
+    public string? SourceLocation { get; init; }
+    public bool Verified { get; init; }
+    public string? ResultMessage { get; init; }
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.4 - 2026-09-20
+
+- The change log now includes the entry name, action type, mechanism, publisher, source, state transition, path, command, result and timestamp.
+- Manual enable and disable operations are recorded immediately after verification.
+- Existing change records remain readable through a local database migration.
+
 ## 0.2.3 - 2026-09-20
 
 - Protected startup entries are now locked before an action reaches Windows.
