@@ -1,6 +1,6 @@
 const translations = {
   en: {
-    pageTitle: "BootLens — See what really starts with Windows",
+    pageTitle: "BootLens - See what really starts with Windows",
     pageDescription: "BootLens is an open-source Windows startup manager and boot analyzer that reveals, explains and helps manage what starts with your PC.",
     skip: "Skip to content",
     menuLabel: "Menu",
@@ -201,7 +201,7 @@ const translations = {
     footerCopy: "Open source Windows startup analysis by LoxyyIT."
   },
   it: {
-    pageTitle: "BootLens — Scopri cosa si avvia davvero con Windows",
+    pageTitle: "BootLens - Scopri cosa si avvia davvero con Windows",
     pageDescription: "BootLens è uno startup manager e boot analyzer open source per Windows, locale e trasparente.",
     skip: "Salta al contenuto",
     menuLabel: "Menu",
@@ -402,7 +402,7 @@ const translations = {
     footerCopy: "Analisi open source dell’avvio Windows di LoxyyIT."
   },
   es: {
-    pageTitle: "BootLens — Descubre qué se inicia realmente con Windows",
+    pageTitle: "BootLens - Descubre qué se inicia realmente con Windows",
     pageDescription: "BootLens es un gestor de inicio y analizador de arranque open source para Windows, local y transparente.",
     skip: "Saltar al contenido",
     menuLabel: "Menú",
@@ -603,7 +603,7 @@ const translations = {
     footerCopy: "Análisis open source del inicio de Windows por LoxyyIT."
   },
   fr: {
-    pageTitle: "BootLens — Voir ce qui démarre vraiment avec Windows",
+    pageTitle: "BootLens - Voir ce qui démarre vraiment avec Windows",
     pageDescription: "BootLens est un gestionnaire de démarrage et analyseur de boot Windows open source, local et transparent.",
     skip: "Aller au contenu",
     menuLabel: "Menu",
