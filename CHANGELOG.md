@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9 - 2026-09-20
+
+- First public source release with the WPF app, local scanner, reports, snapshots and startup change confirmation.
+- Portable Windows x64 package published separately on GitHub Releases.
+- Community functions remain disabled and are marked Coming soon.
+
 ## Unreleased
 
 - Fondazione WPF/MVVM .NET 10.

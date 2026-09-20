@@ -117,7 +117,7 @@ Community is **Coming soon…**. The desktop entry is disabled temporarily, the 
 
 ## Installation and build
 
-There is currently no public GitHub release or installer. Build a portable Windows x64 package locally with the verified PowerShell script:
+A portable Windows x64 package is available from the [GitHub Releases](https://github.com/LoxyyIT/BootLens/releases/latest) page. To build the same package locally with the verified PowerShell script:
 
     dotnet restore BootLens.sln
     dotnet build BootLens.sln -c Release
