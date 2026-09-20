@@ -894,9 +894,8 @@ async function loadLatestRelease() {
     const release = Array.isArray(releases) ? releases.find((item) => !item.draft && !item.prerelease) : null;
     if (!release) return;
     if (!release.html_url || !release.tag_name) return;
-    const asset = Array.isArray(release.assets)
-      ? release.assets.find((item) => /\.(zip|exe)$/i.test(item.name) && item.browser_download_url)
-      : null;
+    const assets = Array.isArray(release.assets) ? release.assets.filter((item) => /\.(zip|exe)$/i.test(item.name) && item.browser_download_url) : [];
+    const asset = assets.find((item) => /\.exe$/i.test(item.name)) || assets.find((item) => /\.zip$/i.test(item.name));
     latestRelease = {
       version: release.tag_name,
       downloadUrl: asset?.browser_download_url || release.html_url
