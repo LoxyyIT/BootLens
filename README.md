@@ -53,20 +53,23 @@ This is not a universal benchmark, an average or a promise. The numbers come fro
 - Current-user and all-users Startup folders.
 - Automatic Windows services and driver-type services.
 - Scheduled Tasks read through schtasks.exe.
+- WMI `Win32_StartupCommand` records, with duplicate executable paths already represented by another scanned source suppressed from the result list.
 - Advanced registry surfaces currently scanned by the Windows scanner: Boot Execute, Winlogon, AppInit, Known DLLs, Explorer shell hooks, Codecs/Drivers32, Image File Execution Options, Winsock providers, print monitors, LSA providers, network providers and Shell Load values.
 
 ### Understand
 
 - Search across name, process, publisher, mechanism, state, path, command, source, trigger, version and identifier.
-- Detail view with executable path, command line, source, publisher, signature, hash, version, trigger, state and trust signals when available.
-- Simple and advanced views, filters, sorting and Microsoft/system-item ordering.
+- Detail view with resolved file path, launch arguments, source, publisher metadata, Authenticode status (valid, unsigned, invalid or unavailable), hash, version, trigger and trust signals when available.
+- Simple and advanced views, including quick filters for missing files, exact duplicate launch paths, unsigned files, invalid signatures and Microsoft items.
 - “Why does this start?” context based on the detected mechanism and source.
+- Coverage page with per-source counts, implemented and unsupported Autoruns categories, and a CSV comparison grouped by category and normalized executable path.
 
 ### Measure and track
 
 - Local startup efficiency scoring and per-entry estimates when enough metadata exists.
-- Boot measurement storage for the optional agent path; real boot measurements are not invented when they do not exist.
-- Scan-to-scan change detection, snapshots and JSON/CSV/HTML export.
+- Real boot duration is read from Windows Diagnostics-Performance Operational event 100 when that event and its `BootTime` field are available. It stays “not measured” when Windows has no record.
+- Measurements include the startup-configuration fingerprint seen by BootLens and can be compared only with prior measurements carrying the same fingerprint; this is observational and does not claim causation.
+- Scan-to-scan change detection, optional 15-minute monitoring while BootLens remains open, snapshots and JSON/CSV/HTML export.
 
 ### Control and recover
 
@@ -92,7 +95,10 @@ This is not a universal benchmark, an average or a promise. The numbers come fro
 | Driver-type services | Yes | No | Detected as a separate mechanism; simple actions do not modify them. |
 | Winlogon / Shell / AppInit | Yes | No | Advanced registry surfaces are read-only in the current modifier. |
 | Other advanced registry surfaces | Yes | No | Boot Execute, Known DLLs, Explorer hooks, Codecs, Image hijacks, Winsock, print monitors, LSA and network providers are inspected read-only. |
-| WMI autostart | Not currently exposed | No | Kept out of the available-feature list until a scanner is implemented and tested. |
+| WMI `Win32_StartupCommand` | Yes | No | Read through the local CIM provider; matching paths already returned by another source are counted in WMI diagnostics and not duplicated in the main list. |
+| Internet Explorer, Print Processors, Boot Verification and Sidebar Gadgets | No | No | Listed as unsupported in the Coverage page. |
+
+The Autoruns comparison imports its CSV locally. Matching is based on normalized executable paths inside mapped categories, not on a claim that both tools use identical collection rules. Compare exports from the same PC and similar times; a difference is a lead to inspect, not proof that either scan is wrong.
 
 ## Scoring is not a verdict
 
@@ -106,6 +112,8 @@ BootLens keeps different signals separate:
 
 - The core app works locally and does not require an account or a cloud service.
 - Community functions, telemetry, crash upload and VirusTotal are currently disabled.
+- The optional change monitor runs only while the desktop app is open; it is not a Windows background service.
+- Multi-version Windows compatibility has not been established by the current local build. The Coverage page shows the Windows version used for the current scan.
 - No remote shell, remote desktop or automatic execution of discovered command lines.
 - Startup changes can break applications or Windows features. Review the path, publisher, mechanism and impact before changing anything.
 - Protected system components are guarded, and the confirmation dialog explains the risk before an eligible change.
@@ -170,16 +178,19 @@ No application screenshots are committed yet. The public site deliberately does 
 
 - Community Score aggregation and presentation in the app — **Coming soon…**
 - Complete Undo Center and Snapshot restore UI.
-- Full ETW/boot-agent measurements and before/after comparisons.
-- WMI scanner and broader fixture coverage for advanced Windows surfaces.
+- Deeper ETW measurements for per-startup-process CPU, disk I/O and memory attribution.
+- Broader fixture coverage and verified scan behavior across Windows editions and versions.
 - Delay-startup management for compatible applications.
 - Code signing, verified installer and wider Windows-version testing.
 
 ## Current limitations
 
 - The scanner is Windows-specific and advanced registry surfaces are read-only.
-- Boot measurements depend on the optional agent path and real boots; the app does not fabricate them.
-- There is no official Community endpoint or public release artifact yet.
+- Boot measurements depend on Windows recording Diagnostics-Performance event 100; BootLens does not fabricate a duration when the event is missing or unreadable.
+- Change monitoring checks every 15 minutes only while the app is open; it does not watch continuously after the app closes.
+- The Autoruns category comparison depends on a user-imported CSV from a comparable scan and matches executable paths, so category and timing differences can remain.
+- Windows versions other than the current development environment have not been verified as compatible.
+- There is no official Community endpoint.
 - The Community Score is not implemented.
 - Inno Setup is optional for local builds and is not installed in the current development environment.
 - The current repository license still contains placeholder copyright fields that should be finalized before a formal public release.

@@ -3,15 +3,17 @@ using System.IO;
 using System.Security;
 using System.Security.Cryptography;
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Microsoft.Win32;
 using BootLens.Core.Domain;
 using BootLens.Core.Services;
 
 namespace BootLens.Windows;
 
-public sealed class WindowsStartupScanner : IStartupScanner
+public sealed class WindowsStartupScanner : IStartupScanner, IScanCoverageProvider
 {
     private static readonly ConcurrentDictionary<string, CachedInspection> InspectionCache = new(StringComparer.OrdinalIgnoreCase);
+    public IReadOnlyList<ScanSourceCoverage> LastCoverage { get; private set; } = [];
     private static readonly (RegistryHive Hive, string Path, StartupMechanism Mechanism, RegistryView View)[] RunLocations =
     [
         (RegistryHive.CurrentUser, "Software\\Microsoft\\Windows\\CurrentVersion\\Run", StartupMechanism.RegistryRun, RegistryView.Registry64),
@@ -40,9 +42,106 @@ public sealed class WindowsStartupScanner : IStartupScanner
             ScanStartupFolder(entries, Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup), "All users", cancellationToken);
             ScanServices(entries, cancellationToken);
             ScanScheduledTasks(entries, cancellationToken);
-            return (IReadOnlyList<StartupEntry>)entries.GroupBy(entry => entry.Id, StringComparer.OrdinalIgnoreCase).Select(group => group.First()).OrderBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
+            var wmi = ScanWmi(entries, cancellationToken);
+            var results = entries.GroupBy(entry => entry.Id, StringComparer.OrdinalIgnoreCase).Select(group => group.First()).OrderBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
+            LastCoverage = BuildCoverage(results, wmi);
+            return (IReadOnlyList<StartupEntry>)results;
         }, cancellationToken);
     }
+
+    private static WmiScanResult ScanWmi(List<StartupEntry> entries, CancellationToken token)
+    {
+        if (!OperatingSystem.IsWindows()) return new(false, 0, 0);
+        const string script = "$ProgressPreference='SilentlyContinue'; Get-CimInstance -ClassName Win32_StartupCommand -ErrorAction Stop | Select-Object Name,Command,Location,User | ConvertTo-Json -Compress -Depth 3";
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo("powershell.exe", $"-NoLogo -NoProfile -NonInteractive -Command \"{script}\"")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = System.Text.Encoding.Unicode
+            });
+            if (process is null) return new(false, 0, 0);
+            var outputTask = process.StandardOutput.ReadToEndAsync(token);
+            var errorTask = process.StandardError.ReadToEndAsync(token);
+            if (!process.WaitForExit(15000))
+            {
+                process.Kill(true);
+                return new(false, 0, 0);
+            }
+            token.ThrowIfCancellationRequested();
+            var output = outputTask.GetAwaiter().GetResult();
+            _ = errorTask.GetAwaiter().GetResult();
+            if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output)) return new(process.ExitCode == 0, 0, 0);
+            using var document = JsonDocument.Parse(output);
+            if (document.RootElement.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) return new(true, 0, 0);
+            var rows = document.RootElement.ValueKind == JsonValueKind.Array ? document.RootElement.EnumerateArray().ToArray() : [document.RootElement];
+            var added = 0;
+            foreach (var row in rows)
+            {
+                token.ThrowIfCancellationRequested();
+                var name = ReadJsonString(row, "Name");
+                var command = ReadJsonString(row, "Command");
+                var location = ReadJsonString(row, "Location");
+                var user = ReadJsonString(row, "User");
+                if (string.IsNullOrWhiteSpace(command)) continue;
+                var path = ExtractExecutablePath(command);
+                if (entries.Any(entry => SameStartupCommand(entry, path, command))) continue;
+                var entry = CreateEntry(string.IsNullOrWhiteSpace(name) ? Path.GetFileName(path ?? command) : name, command, StartupMechanism.Wmi, $"WMI · {location}", $"{location}:{name}:{user}", false) with
+                {
+                    Trigger = user,
+                    Description = string.IsNullOrWhiteSpace(location) ? "Win32_StartupCommand" : location
+                };
+                entries.Add(entry);
+                added++;
+            }
+            return new(true, rows.Length, added);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception) when (OperatingSystem.IsWindows()) { return new(false, 0, 0); }
+    }
+
+    private static bool SameStartupCommand(StartupEntry entry, string? path, string command)
+    {
+        if (string.Equals(entry.CommandLine?.Trim(), command.Trim(), StringComparison.OrdinalIgnoreCase)) return true;
+        return !string.IsNullOrWhiteSpace(path) && string.Equals(entry.ExecutablePath?.Trim().Trim('"'), path.Trim().Trim('"'), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ReadJsonString(JsonElement row, string property) => row.TryGetProperty(property, out var value) && value.ValueKind is JsonValueKind.String or JsonValueKind.Number ? value.ToString() : null;
+
+    private static IReadOnlyList<ScanSourceCoverage> BuildCoverage(IReadOnlyCollection<StartupEntry> entries, WmiScanResult wmi)
+    {
+        var definitions = new (string Key, StartupMechanism[] Mechanisms, bool Supported, string Status)[]
+        {
+            ("Logon", [StartupMechanism.RegistryRun, StartupMechanism.RegistryRunOnce, StartupMechanism.StartupFolder], true, "Implemented"),
+            ("Services", [StartupMechanism.Service], true, "Implemented"),
+            ("Drivers", [StartupMechanism.Driver], true, "Implemented"),
+            ("ScheduledTasks", [StartupMechanism.ScheduledTask], true, "Implemented"),
+            ("Winlogon", [StartupMechanism.Winlogon], true, "Implemented"),
+            ("Explorer", [StartupMechanism.Explorer, StartupMechanism.Shell], true, "Implemented"),
+            ("Wmi", [StartupMechanism.Wmi], wmi.Succeeded, wmi.Succeeded ? "Available" : "Unavailable"),
+            ("BootExecute", [StartupMechanism.BootExecute], true, "Implemented"),
+            ("AppInit", [StartupMechanism.AppInit], true, "Implemented"),
+            ("KnownDll", [StartupMechanism.KnownDll], true, "Implemented"),
+            ("Codecs", [StartupMechanism.Codecs], true, "Implemented"),
+            ("ImageHijack", [StartupMechanism.ImageHijack], true, "Implemented"),
+            ("Winsock", [StartupMechanism.Winsock], true, "Implemented"),
+            ("PrintMonitor", [StartupMechanism.PrintMonitor], true, "Implemented"),
+            ("LsaProvider", [StartupMechanism.LsaProvider], true, "Implemented"),
+            ("NetworkProvider", [StartupMechanism.NetworkProvider], true, "Implemented"),
+            ("Office", [StartupMechanism.Office], false, "Unsupported"),
+            ("PackagedApp", [StartupMechanism.PackagedApp], false, "Unsupported"),
+            ("InternetExplorer", [], false, "Unsupported"),
+            ("PrintProcessors", [], false, "Unsupported"),
+            ("BootVerification", [], false, "Unsupported"),
+            ("SidebarGadgets", [], false, "Unsupported")
+        };
+        return definitions.Select(item => new ScanSourceCoverage(item.Key, entries.Count(entry => item.Mechanisms.Contains(entry.Mechanism)), item.Supported, item.Status, item.Key == "Wmi" ? $"{wmi.RawCount}:{wmi.AddedCount}" : null)).ToArray();
+    }
+
+    private sealed record WmiScanResult(bool Succeeded, int RawCount, int AddedCount);
 
     private static void ScanRegistry(List<StartupEntry> entries, RegistryHive hive, string path, StartupMechanism mechanism, RegistryView view, CancellationToken token)
     {
@@ -126,7 +225,7 @@ public sealed class WindowsStartupScanner : IStartupScanner
     {
         var path = ExtractExecutablePath(value);
         var file = InspectFile(path);
-        return new StartupEntry { Id = $"{mechanism}:{identifier}:{source}", DisplayName = name, Mechanism = mechanism, State = StartupState.Protected, Publisher = file.Publisher, Description = value, ExecutablePath = path, CommandLine = value, Identifier = identifier, Version = file.Version, Sha256 = file.Sha256, IsSigned = file.IsSigned, IsMicrosoft = file.IsMicrosoft, IsCritical = true, IsBroken = false, SourceLocation = source };
+        return new StartupEntry { Id = $"{mechanism}:{identifier}:{source}", DisplayName = name, Mechanism = mechanism, State = StartupState.Protected, Publisher = file.Publisher, Description = value, ExecutablePath = path, CommandLine = value, Identifier = identifier, Version = file.Version, Sha256 = file.Sha256, IsSigned = file.IsSigned, SignatureStatus = file.SignatureStatus, SignatureDetail = file.SignatureDetail, IsMicrosoft = file.IsMicrosoft, IsCritical = true, IsBroken = false, SourceLocation = source };
     }
 
     private static void ScanDisabledRegistry(List<StartupEntry> entries, CancellationToken token)
@@ -174,7 +273,7 @@ public sealed class WindowsStartupScanner : IStartupScanner
                 var mechanism = TryGetServiceType(service.ServiceName) is 1 or 2 ? StartupMechanism.Driver : StartupMechanism.Service;
                 var critical = service.ServiceName.Contains("defender", StringComparison.OrdinalIgnoreCase) || service.ServiceName.Contains("security", StringComparison.OrdinalIgnoreCase) || service.ServiceName.Contains("network", StringComparison.OrdinalIgnoreCase);
                 var microsoft = file.IsMicrosoft || path?.Contains(@"\Windows\System32\", StringComparison.OrdinalIgnoreCase) == true;
-                entries.Add(new StartupEntry { Id = $"service:{service.ServiceName}", DisplayName = service.DisplayName, Mechanism = mechanism, State = startMode == "Disabled" ? StartupState.Disabled : critical ? StartupState.Protected : StartupState.Enabled, Publisher = file.Publisher, Description = service.Status.ToString(), ExecutablePath = path ?? command ?? service.ServiceName, CommandLine = command ?? service.ServiceName, Identifier = service.ServiceName, Version = file.Version, Sha256 = file.Sha256, IsSigned = file.IsSigned, IsMicrosoft = microsoft, IsCritical = critical, IsBroken = path is not null && file.IsBroken, Trigger = startMode, SourceLocation = "Service Control Manager" });
+                entries.Add(new StartupEntry { Id = $"service:{service.ServiceName}", DisplayName = service.DisplayName, Mechanism = mechanism, State = startMode == "Disabled" ? StartupState.Disabled : critical ? StartupState.Protected : StartupState.Enabled, Publisher = file.Publisher, Description = service.Status.ToString(), ExecutablePath = path ?? command ?? service.ServiceName, CommandLine = command ?? service.ServiceName, Identifier = service.ServiceName, Version = file.Version, Sha256 = file.Sha256, IsSigned = file.IsSigned, SignatureStatus = file.SignatureStatus, SignatureDetail = file.SignatureDetail, IsMicrosoft = microsoft, IsCritical = critical, IsBroken = path is not null && file.IsBroken, Trigger = startMode, SourceLocation = "Service Control Manager" });
             }
         }
         catch (Exception) when (OperatingSystem.IsWindows())
@@ -250,7 +349,7 @@ public sealed class WindowsStartupScanner : IStartupScanner
         var path = ExtractExecutablePath(command);
         var file = InspectFile(path);
         var id = $"{mechanism}:{identifier}:{source}:{path ?? command}";
-        return new StartupEntry { Id = id, DisplayName = name, Mechanism = mechanism, State = isDisabled ? StartupState.Disabled : file.IsCritical ? StartupState.Protected : file.IsBroken ? StartupState.Broken : StartupState.Enabled, Publisher = file.Publisher, Description = file.Description, ExecutablePath = path, CommandLine = command, Identifier = identifier, Version = file.Version, Sha256 = file.Sha256, IsSigned = file.IsSigned, IsMicrosoft = file.IsMicrosoft, IsCritical = file.IsCritical, IsBroken = file.IsBroken, SourceLocation = source };
+        return new StartupEntry { Id = id, DisplayName = name, Mechanism = mechanism, State = isDisabled ? StartupState.Disabled : file.IsCritical ? StartupState.Protected : file.IsBroken ? StartupState.Broken : StartupState.Enabled, Publisher = file.Publisher, Description = file.Description, ExecutablePath = path, CommandLine = command, Identifier = identifier, Version = file.Version, Sha256 = file.Sha256, IsSigned = file.IsSigned, SignatureStatus = file.SignatureStatus, SignatureDetail = file.SignatureDetail, IsMicrosoft = file.IsMicrosoft, IsCritical = file.IsCritical, IsBroken = file.IsBroken, SourceLocation = source };
     }
 
     public static string? ExtractExecutablePath(string command)
@@ -277,25 +376,28 @@ public sealed class WindowsStartupScanner : IStartupScanner
 
     private static FileInspection InspectFile(string? path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return new FileInspection(null, null, null, null, false, false, false, true);
+        if (string.IsNullOrWhiteSpace(path)) return new FileInspection(null, null, null, null, false, SignatureStatus.Unavailable, "The startup entry has no resolved executable path.", false, false, false);
+        if (!File.Exists(path)) return new FileInspection(path, null, null, null, false, SignatureStatus.Unavailable, "The configured file is missing.", false, false, true);
         try
         {
             var fileInfo = new FileInfo(path);
             if (InspectionCache.TryGetValue(path, out var cached) && cached.Length == fileInfo.Length && cached.LastWriteUtcTicks == fileInfo.LastWriteTimeUtc.Ticks) return cached.Result;
             var info = FileVersionInfo.GetVersionInfo(path);
-            var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
+            using var stream = File.OpenRead(path);
+            var hash = Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
             var signature = AuthenticodeVerifier.Verify(path);
             var publisher = signature.Publisher ?? info.CompanyName;
             var microsoft = publisher?.Contains("Microsoft", StringComparison.OrdinalIgnoreCase) == true;
-            var result = new FileInspection(info.FileName, publisher, info.FileDescription, info.FileVersion, signature.IsValid, microsoft, microsoft, false) with { Sha256 = hash };
+            var result = new FileInspection(info.FileName, publisher, info.FileDescription, info.FileVersion, signature.IsValid, signature.Status, signature.Detail, microsoft, microsoft, false) with { Sha256 = hash };
             InspectionCache[path] = new CachedInspection(fileInfo.Length, fileInfo.LastWriteTimeUtc.Ticks, result);
             return result;
         }
-        catch (IOException) { return new FileInspection(path, null, null, null, false, false, false, true); }
-        catch (UnauthorizedAccessException) { return new FileInspection(path, null, null, null, false, false, false, true); }
+        catch (IOException) { return new FileInspection(path, null, null, null, false, SignatureStatus.Unavailable, "The file could not be read.", false, false, !File.Exists(path)); }
+        catch (UnauthorizedAccessException) { return new FileInspection(path, null, null, null, false, SignatureStatus.Unavailable, "Access to the file was denied.", false, false, false); }
+        catch (SecurityException) { return new FileInspection(path, null, null, null, false, SignatureStatus.Unavailable, "Windows denied access to the file.", false, false, false); }
     }
 
-    private sealed record FileInspection(string? Path, string? Publisher, string? Description, string? Version, bool IsSigned, bool IsMicrosoft, bool IsCritical, bool IsBroken)
+    private sealed record FileInspection(string? Path, string? Publisher, string? Description, string? Version, bool IsSigned, SignatureStatus SignatureStatus, string SignatureDetail, bool IsMicrosoft, bool IsCritical, bool IsBroken)
     {
         public string? Sha256 { get; init; }
     }

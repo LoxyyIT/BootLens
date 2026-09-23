@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using BootLens.Core.Domain;
 
 namespace BootLens.Windows;
 
@@ -12,9 +13,9 @@ internal static class AuthenticodeVerifier
     private const uint RevokeNone = 0;
     private const uint ChoiceFile = 1;
 
-    public static (bool IsValid, string? Publisher) Verify(string path)
+    public static (bool IsValid, string? Publisher, SignatureStatus Status, string Detail) Verify(string path)
     {
-        if (!OperatingSystem.IsWindows()) return (false, null);
+        if (!OperatingSystem.IsWindows()) return (false, null, SignatureStatus.Unavailable, "Windows trust services are unavailable.");
 
         var filePath = Marshal.StringToCoTaskMemUni(path);
         var fileInfo = new WinTrustFileInfo
@@ -39,16 +40,17 @@ internal static class AuthenticodeVerifier
         {
             var action = GenericVerifyAction;
             var status = WinVerifyTrust(IntPtr.Zero, ref action, trustDataPtr);
-            if (status != 0) return (false, null);
-            return (true, ReadPublisher(path));
+            if (status == 0) return (true, ReadPublisher(path), SignatureStatus.Valid, "WinVerifyTrust accepted the file.");
+            if (status == 0x800B0100) return (false, null, SignatureStatus.Unsigned, "No Authenticode signature was found.");
+            return (false, null, SignatureStatus.Invalid, $"WinVerifyTrust returned 0x{status:X8}.");
         }
         catch (CryptographicException)
         {
-            return (false, null);
+            return (false, null, SignatureStatus.Unavailable, "The signature could not be inspected.");
         }
         catch (Win32Exception)
         {
-            return (false, null);
+            return (false, null, SignatureStatus.Unavailable, "Windows could not complete signature verification.");
         }
         finally
         {

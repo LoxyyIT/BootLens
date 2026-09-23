@@ -1,13 +1,17 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Threading;
+using Microsoft.Win32;
 using System.Windows.Media;
 using BootLens.Core.Analysis;
 using BootLens.Core.Domain;
 using BootLens.Core.Localization;
 using BootLens.Core.Services;
+using BootLens.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -22,6 +26,7 @@ public partial class MainViewModel : ObservableObject
     private const string SnapshotBeforeChangesKey = "changes.snapshot_before";
     private const string KeepSystemItemsBottomKey = "display.system_items_bottom";
     private const string CheckUpdatesOnLaunchKey = "updates.check_on_launch";
+    private const string MonitorStartupChangesKey = "monitor.startup_changes";
     private readonly IBootLensRepository _repository;
     private readonly IStartupScanner _scanner;
     private readonly IStartupModifier _modifier;
@@ -29,10 +34,13 @@ public partial class MainViewModel : ObservableObject
     private readonly StartupAnalysisService _analysis;
     private readonly LocalizationService _localization;
     private readonly ThemeManager _themeManager;
+    private readonly IBootMeasurementProvider _bootMeasurementProvider;
     private readonly UpdateService _updateService = new();
+    private readonly DispatcherTimer _monitorTimer;
+    private IReadOnlyList<AutorunsItem> _autorunsItems = [];
     private bool _loadingSettings;
 
-    public MainViewModel(IBootLensRepository repository, IStartupScanner scanner, IStartupModifier modifier, ChangeDetection changeDetection, StartupAnalysisService analysis, LocalizationService localization, ThemeManager themeManager)
+    public MainViewModel(IBootLensRepository repository, IStartupScanner scanner, IStartupModifier modifier, IBootMeasurementProvider bootMeasurementProvider, ChangeDetection changeDetection, StartupAnalysisService analysis, LocalizationService localization, ThemeManager themeManager)
     {
         _repository = repository;
         _scanner = scanner;
@@ -41,6 +49,12 @@ public partial class MainViewModel : ObservableObject
         _analysis = analysis;
         _localization = localization;
         _themeManager = themeManager;
+        _bootMeasurementProvider = bootMeasurementProvider;
+        _monitorTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
+        _monitorTimer.Tick += async (_, _) =>
+        {
+            if (MonitorStartupChangesEnabled && !IsBusy) await ScanCoreAsync(true);
+        };
         _localization.LanguageChanged += (_, _) =>
         {
             RebuildRows();
@@ -52,6 +66,8 @@ public partial class MainViewModel : ObservableObject
             foreach (var change in RecentChanges) change.RefreshLocalization();
             NotifySelectedEntry();
             OnPropertyChanged(nameof(VisibleEntries));
+            RefreshCoverageRows();
+            if (_autorunsItems.Count > 0) BuildAutorunsComparison(_autorunsItems);
         };
     }
 
@@ -61,6 +77,8 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<BootMeasurement> BootMeasurements { get; } = [];
     public ObservableCollection<ChangeLogRow> RecentChanges { get; } = [];
     public ObservableCollection<Snapshot> Snapshots { get; } = [];
+    public ObservableCollection<CoverageViewRow> CoverageRows { get; } = [];
+    public ObservableCollection<AutorunsComparisonViewRow> AutorunsComparison { get; } = [];
     public IEnumerable<StartupEntryRow> VisibleEntries
     {
         get
@@ -82,13 +100,14 @@ public partial class MainViewModel : ObservableObject
     }
     public IReadOnlyList<string> Languages => ["en", "it", "es", "fr"];
     public IReadOnlyList<string> Themes => ["Light"];
-    public IReadOnlyList<string> Pages => ["Overview", "Startup", "Timeline", "BootHistory", "Changes", "Snapshots", "Advanced", "Settings"];
+    public IReadOnlyList<string> Pages => ["Overview", "Startup", "Timeline", "BootHistory", "Changes", "Snapshots", "Coverage", "Advanced", "Settings"];
     public bool IsAllFilter => ActiveFilter == "All";
     public bool IsActiveFilter => ActiveFilter == "Active";
     public bool IsDisabledFilter => ActiveFilter == "Disabled";
     public bool IsBrokenFilter => ActiveFilter == "Broken";
     public bool IsHighImpactFilter => ActiveFilter == "HighImpact";
     public bool IsUnsignedFilter => ActiveFilter == "Unsigned";
+    public bool IsInvalidSignatureFilter => ActiveFilter == "InvalidSignature";
     public bool IsMicrosoftFilter => ActiveFilter == "Microsoft";
     public bool IsThirdPartyFilter => ActiveFilter == "ThirdParty";
     public bool IsRegistryFilter => ActiveFilter == "Registry";
@@ -112,6 +131,10 @@ public partial class MainViewModel : ObservableObject
     public bool IsCommunityPage => SelectedPage == "Community";
     public bool IsAdvancedPage => SelectedPage == "Advanced";
     public bool IsSettingsPage => SelectedPage == "Settings";
+    public bool IsCoveragePage => SelectedPage == "Coverage";
+    public bool IsMissingFilter => ActiveFilter == "Missing";
+    public bool IsDuplicateFilter => ActiveFilter == "Duplicates";
+    private readonly HashSet<string> _duplicateEntryIds = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty] private StartupEntry? selectedEntry;
     [ObservableProperty] private StartupEntryRow? selectedRow;
@@ -142,6 +165,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool snapshotBeforeChangesEnabled = true;
     [ObservableProperty] private bool keepSystemItemsBottomEnabled = true;
     [ObservableProperty] private bool checkUpdatesOnLaunchEnabled = true;
+    [ObservableProperty] private bool monitorStartupChangesEnabled;
+    [ObservableProperty] private string autorunsImportName = string.Empty;
+    [ObservableProperty] private string autorunsImportStatus = string.Empty;
     [ObservableProperty] private string updateStatus = string.Empty;
     [ObservableProperty] private bool updateAvailable;
     [ObservableProperty] private string updateUrl = UpdateService.ReleasesUrl;
@@ -150,6 +176,8 @@ public partial class MainViewModel : ObservableObject
     public string SelectedEntryPublisher => SelectedEntry?.Publisher ?? Texts["UnknownPublisher"];
     public string SelectedEntryProcess => SelectedEntry is null ? Texts["NotAvailable"] : ProcessName(SelectedEntry);
     public string SelectedEntryPath => SelectedEntry is null ? Texts["NotAvailable"] : SelectedEntry.ExecutablePath ?? SelectedEntry.CommandLine ?? SelectedEntry.Identifier ?? ProcessName(SelectedEntry);
+    public string SelectedEntryArguments => SelectedEntry is null ? Texts["NotAvailable"] : ExtractArguments(SelectedEntry);
+    public string SelectedEntryFileStatus => SelectedEntry is null || !IsResolvedFilePath(SelectedEntry.ExecutablePath) ? Texts["NotAvailable"] : File.Exists(SelectedEntry.ExecutablePath) ? Texts["FilePresent"] : Texts["FileMissing"];
     public string SelectedEntryMechanism => SelectedEntry is null ? string.Empty : _localization.Get(MechanismKey(SelectedEntry.Mechanism));
     public string SelectedEntryState => SelectedEntry is null ? string.Empty : _localization.Get(StateKey(SelectedEntry.State));
     public bool SelectedEntryIsChecked => SelectedEntry?.State is StartupState.Enabled or StartupState.Protected;
@@ -157,7 +185,8 @@ public partial class MainViewModel : ObservableObject
     public string SelectedEntryCommand => SelectedEntry?.CommandLine ?? Texts["NotAvailable"];
     public string SelectedEntryVersion => SelectedEntry?.Version ?? Texts["NotAvailable"];
     public string SelectedEntryHash => SelectedEntry?.Sha256 ?? Texts["NotAvailable"];
-    public string SelectedEntrySignature => SelectedEntry is null ? Texts["NotAvailable"] : SelectedEntry.IsSigned ? Texts["ValidSignature"] : Texts["Unsigned"];
+    public string SelectedEntrySignature => SelectedEntry is null ? Texts["NotAvailable"] : Texts[SelectedEntry.SignatureStatus switch { SignatureStatus.Valid => "ValidSignature", SignatureStatus.Unsigned => "UnsignedSignature", SignatureStatus.Invalid => "InvalidSignature", SignatureStatus.Unavailable => "SignatureUnavailable", _ => SelectedEntry.IsSigned ? "ValidSignature" : "SignatureNotChecked" }];
+    public string SelectedEntrySignatureDetail => SelectedEntry?.SignatureDetail ?? Texts["NotAvailable"];
     public string SelectedEntryTrust => SelectedEntry is null ? Texts["NotAvailable"] : string.Join(" · ", _analysis.Analyze(SelectedEntry, null, Entries).Trust.SignalKeys.Select(key => Texts[key])) is { Length: > 0 } trust ? trust : Texts["NoTrustSignals"];
     public string SelectedEntryRecommendation => SelectedEntry is null ? string.Empty : Texts[_analysis.Analyze(SelectedEntry, null, Entries).Recommendation.TitleKey];
     public string SelectedEntryRecommendationExplanation => SelectedEntry is null ? string.Empty : Texts[_analysis.Analyze(SelectedEntry, null, Entries).Recommendation.ExplanationKey];
@@ -169,7 +198,8 @@ public partial class MainViewModel : ObservableObject
     public string SelectedEntryTrigger => SelectedEntry?.Trigger ?? Texts["NotAvailable"];
     public string SelectedEntryIdentifier => SelectedEntry?.Identifier ?? Texts["NotAvailable"];
     public string SelectedEntryScore => SelectedEntry is null ? "—" : FormatScore(_analysis.Analyze(SelectedEntry, null, Entries).Efficiency, Texts);
-    public string LatestBootHint => BootMeasurements.Count == 0 ? Texts["BootDetected"] : Texts["LatestMeasurement"];
+    public string LatestBootHint => BootMeasurements.Count == 0 ? Texts["NotMeasured"] : Texts["LatestMeasurement"];
+    public string WindowsVersionText => $"{Environment.OSVersion.VersionString} · {System.Runtime.InteropServices.RuntimeInformation.OSArchitecture}";
     public bool CanChangeSelected => !IsBusy && SelectedEntry is not null && CanChange(SelectedEntry);
     public string SelectedActionText => SelectedEntry is null ? string.Empty : !CanChange(SelectedEntry) ? Texts["ProtectedSystemComponent"] : SelectedEntry.State == StartupState.Disabled ? Texts["Enable"] : Texts["Disable"];
     public string CurrentPageTitle => _localization.Get(SelectedPage);
@@ -191,6 +221,7 @@ public partial class MainViewModel : ObservableObject
         IsFirstRun = acceptedVersion != _localization.Get("DisclaimerVersion");
         ConfirmActionsEnabled = await _repository.GetSettingAsync(ConfirmActionsKey) != "false";
         AutoScanOnLaunchEnabled = await ReadBoolSettingAsync(AutoScanOnLaunchKey, false);
+        MonitorStartupChangesEnabled = await ReadBoolSettingAsync(MonitorStartupChangesKey, false);
         SnapshotBeforeChangesEnabled = await ReadBoolSettingAsync(SnapshotBeforeChangesKey, true);
         KeepSystemItemsBottomEnabled = await ReadBoolSettingAsync(KeepSystemItemsBottomKey, true);
         CheckUpdatesOnLaunchEnabled = await ReadBoolSettingAsync(CheckUpdatesOnLaunchKey, true);
@@ -199,9 +230,12 @@ public partial class MainViewModel : ObservableObject
         ReplaceEntries(entries);
         await LoadSecondaryDataAsync();
         await UpdateSummaryAsync();
+        RefreshCoverageRows();
         IsInitialized = true;
         StatusText = entries.Count == 0 ? Texts["NoEntriesHint"] : $"{entries.Count} {Texts["ActiveItems"].ToLowerInvariant()}";
         if (AutoScanOnLaunchEnabled) await ScanAsync();
+        await CaptureBootMeasurementAsync(Entries.ToArray());
+        if (MonitorStartupChangesEnabled) _monitorTimer.Start();
         if (CheckUpdatesOnLaunchEnabled) await CheckForUpdatesAsync();
         else UpdateStatus = Texts["UpdateChecksDisabled"];
     }
@@ -218,14 +252,19 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task ScanAsync()
     {
+        await ScanCoreAsync(false);
+    }
+
+    private async Task ScanCoreAsync(bool background)
+    {
         if (IsBusy) return;
         IsBusy = true;
-        StatusText = Texts["Scanning"];
+        if (!background) StatusText = Texts["Scanning"];
         try
         {
             var previous = Entries.ToArray();
             var current = await _scanner.ScanAsync();
-            var changes = _changeDetection.Compare(previous, current);
+            IReadOnlyList<StartupChange> changes = previous.Length == 0 ? [] : _changeDetection.Compare(previous, current);
             await _repository.SaveEntriesAsync(current);
             if (changes.Count > 0) await _repository.SaveChangesAsync(changes);
             ReplaceEntries(current);
@@ -233,7 +272,10 @@ public partial class MainViewModel : ObservableObject
             ModifiedItems = changes.Count(change => change.ChangeType is "Modified" or "StateChanged");
             await LoadSecondaryDataAsync();
             await UpdateSummaryAsync();
-            StatusText = $"{current.Count} {Texts["ActiveItems"].ToLowerInvariant()} · {DateTime.Now:t}";
+            RefreshCoverageRows();
+            StatusText = background && changes.Count > 0
+                ? string.Format(Texts["MonitorChangesDetected"], changes.Count, DateTime.Now.ToString("t"))
+                : $"{current.Count} {Texts["ActiveItems"].ToLowerInvariant()} · {DateTime.Now:t}";
         }
         catch (OperationCanceledException) { StatusText = Texts["Cancel"]; }
         catch (Exception exception) { StatusText = exception.Message; }
@@ -401,6 +443,8 @@ public partial class MainViewModel : ObservableObject
                     entry.CommandLine,
                     entry.SourceLocation,
                     entry.IsSigned,
+                    entry.SignatureStatus,
+                    entry.SignatureDetail,
                     entry.IsMicrosoft,
                     entry.IsCritical,
                     entry.IsBroken,
@@ -471,6 +515,48 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ImportAutorunsAsync()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Autoruns CSV (*.csv)|*.csv|All files (*.*)|*.*",
+            CheckFileExists = true,
+            Multiselect = false,
+            Title = Texts["AutorunsImport"]
+        };
+        if (dialog.ShowDialog(Application.Current.MainWindow) != true) return;
+        try
+        {
+            var records = ParseCsv(await File.ReadAllTextAsync(dialog.FileName));
+            if (records.Count < 2) throw new InvalidDataException(Texts["AutorunsCsvInvalid"]);
+            var header = records[0].Select(value => value.Trim().TrimStart('\uFEFF')).ToArray();
+            var categoryIndex = FindColumn(header, "Category", "Entry Location");
+            var nameIndex = FindColumn(header, "Entry", "Autoruns Entry", "Name");
+            var pathIndex = FindColumn(header, "Image Path", "Path");
+            var commandIndex = FindColumn(header, "Launch String", "Command", "Image Path");
+            var imported = records.Skip(1)
+                .Where(row => row.Any(value => !string.IsNullOrWhiteSpace(value)))
+                .Select(row => new AutorunsItem(
+                    ReadColumn(row, categoryIndex),
+                    ReadColumn(row, nameIndex),
+                    ReadColumn(row, pathIndex),
+                    ReadColumn(row, commandIndex)))
+                .Where(item => !string.IsNullOrWhiteSpace(item.Category))
+                .ToArray();
+            if (imported.Length == 0) throw new InvalidDataException(Texts["AutorunsCsvInvalid"]);
+            BuildAutorunsComparison(imported);
+            _autorunsItems = imported;
+            AutorunsImportName = Path.GetFileName(dialog.FileName);
+            AutorunsImportStatus = string.Format(Texts["AutorunsImported"], imported.Length, AutorunsImportName);
+            SelectedPage = "Coverage";
+        }
+        catch (Exception exception)
+        {
+            AutorunsImportStatus = $"{Texts["AutorunsImportFailed"]}: {exception.Message}";
+        }
+    }
+
+    [RelayCommand]
     private void ClearSearch() => SearchText = string.Empty;
 
     [RelayCommand]
@@ -531,6 +617,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsCommunityPage));
         OnPropertyChanged(nameof(IsAdvancedPage));
         OnPropertyChanged(nameof(IsSettingsPage));
+        OnPropertyChanged(nameof(IsCoveragePage));
     }
 
     partial void OnSearchTextChanged(string value) => OnPropertyChanged(nameof(VisibleEntries));
@@ -543,6 +630,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsBrokenFilter));
         OnPropertyChanged(nameof(IsHighImpactFilter));
         OnPropertyChanged(nameof(IsUnsignedFilter));
+        OnPropertyChanged(nameof(IsInvalidSignatureFilter));
         OnPropertyChanged(nameof(IsMicrosoftFilter));
         OnPropertyChanged(nameof(IsThirdPartyFilter));
         OnPropertyChanged(nameof(IsRegistryFilter));
@@ -554,6 +642,8 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsWmiFilter));
         OnPropertyChanged(nameof(IsAdvancedSurfaceFilter));
         OnPropertyChanged(nameof(IsStartupFolderFilter));
+        OnPropertyChanged(nameof(IsMissingFilter));
+        OnPropertyChanged(nameof(IsDuplicateFilter));
     }
     partial void OnSortModeChanged(string value) => OnPropertyChanged(nameof(VisibleEntries));
     partial void OnIsBusyChanged(bool value)
@@ -566,6 +656,12 @@ public partial class MainViewModel : ObservableObject
     partial void OnSnapshotBeforeChangesEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(SnapshotBeforeChangesKey, value ? "true" : "false"); }
     partial void OnKeepSystemItemsBottomEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(KeepSystemItemsBottomKey, value ? "true" : "false"); OnPropertyChanged(nameof(VisibleEntries)); }
     partial void OnCheckUpdatesOnLaunchEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(CheckUpdatesOnLaunchKey, value ? "true" : "false"); }
+    partial void OnMonitorStartupChangesEnabledChanged(bool value)
+    {
+        if (!_loadingSettings) _ = _repository.SetSettingAsync(MonitorStartupChangesKey, value ? "true" : "false");
+        if (value && IsInitialized) _monitorTimer.Start();
+        else _monitorTimer.Stop();
+    }
 
     private void NotifySelectedEntry()
     {
@@ -573,6 +669,8 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedEntryPublisher));
         OnPropertyChanged(nameof(SelectedEntryProcess));
         OnPropertyChanged(nameof(SelectedEntryPath));
+        OnPropertyChanged(nameof(SelectedEntryArguments));
+        OnPropertyChanged(nameof(SelectedEntryFileStatus));
         OnPropertyChanged(nameof(SelectedEntryMechanism));
         OnPropertyChanged(nameof(SelectedEntryState));
         OnPropertyChanged(nameof(SelectedEntryIsChecked));
@@ -581,6 +679,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedEntryVersion));
         OnPropertyChanged(nameof(SelectedEntryHash));
         OnPropertyChanged(nameof(SelectedEntrySignature));
+        OnPropertyChanged(nameof(SelectedEntrySignatureDetail));
         OnPropertyChanged(nameof(SelectedEntryTrust));
         OnPropertyChanged(nameof(SelectedEntryRecommendation));
         OnPropertyChanged(nameof(SelectedEntryRecommendationExplanation));
@@ -601,7 +700,7 @@ public partial class MainViewModel : ObservableObject
         ActiveItems = Entries.Count(entry => entry.State is StartupState.Enabled or StartupState.Protected);
         DisabledItems = Entries.Count(entry => entry.State == StartupState.Disabled);
         BrokenItems = Entries.Count(entry => entry.IsBroken || entry.State == StartupState.Broken);
-        UnsignedItems = Entries.Count(entry => !entry.IsSigned);
+        UnsignedItems = Entries.Count(entry => entry.SignatureStatus == SignatureStatus.Unsigned || entry.SignatureStatus == SignatureStatus.NotChecked && !entry.IsSigned);
         UnknownPublisherItems = Entries.Count(entry => string.IsNullOrWhiteSpace(entry.Publisher));
         HighImpactItems = Entries.Count(entry => _analysis.Analyze(entry).Efficiency.Value is > 0 and < 45);
         if (Entries.Count == 0) HealthScore = "—";
@@ -613,9 +712,14 @@ public partial class MainViewModel : ObservableObject
             var unsignedPenalty = UnsignedItems * 100.0 / Entries.Count * 0.1;
             HealthScore = Math.Clamp((int)Math.Round(100 - highImpactPenalty - brokenPenalty - unknownPenalty - unsignedPenalty), 1, 100).ToString();
         }
-        LatestBoot = BootMeasurements.Count == 0 ? FormatBootTimestamp() : $"{BootMeasurements[0].DurationSeconds:0.0}s";
-        MedianBoot = BootMeasurements.Count == 0 ? Texts["NotMeasured"] : $"{Median(BootMeasurements.Select(item => item.DurationSeconds)):0.0}s";
-        Trend = BootMeasurements.Count < 2 ? Texts["NotMeasured"] : $"{((BootMeasurements[0].DurationSeconds - BootMeasurements[1].DurationSeconds) / BootMeasurements[1].DurationSeconds):P0}";
+        var latest = BootMeasurements.FirstOrDefault();
+        BootMeasurement[] sameConfiguration = latest is null ? [] : BootMeasurements.Where(item => item.ConfigurationFingerprint == latest.ConfigurationFingerprint).ToArray();
+        LatestBoot = latest is null ? Texts["NotMeasured"] : $"{latest.DurationSeconds:0.0}s";
+        MedianBoot = sameConfiguration.Length == 0 ? Texts["NotMeasured"] : $"{Median(sameConfiguration.Select(item => item.DurationSeconds)):0.0}s";
+        var previousSameConfiguration = sameConfiguration.Skip(1).FirstOrDefault();
+        Trend = latest is null || previousSameConfiguration is null || previousSameConfiguration.DurationSeconds <= 0
+            ? Texts["NotMeasured"]
+            : $"{((latest.DurationSeconds - previousSameConfiguration.DurationSeconds) / previousSameConfiguration.DurationSeconds):+0%;-0%;0%}";
         await Task.CompletedTask;
     }
 
@@ -629,11 +733,161 @@ public partial class MainViewModel : ObservableObject
         foreach (var item in await _repository.GetSnapshotsAsync()) Snapshots.Add(item);
     }
 
+    private async Task CaptureBootMeasurementAsync(IReadOnlyCollection<StartupEntry> entries)
+    {
+        var measurement = await _bootMeasurementProvider.GetLatestAsync(entries);
+        if (measurement is null || BootMeasurements.Any(item => item.StartedUtc == measurement.StartedUtc && item.Source == measurement.Source)) return;
+        await _repository.SaveBootMeasurementAsync(measurement);
+        BootMeasurements.Insert(0, measurement);
+        while (BootMeasurements.Count > 100) BootMeasurements.RemoveAt(BootMeasurements.Count - 1);
+    }
+
+    private void RefreshCoverageRows()
+    {
+        CoverageRows.Clear();
+        var coverage = (_scanner as IScanCoverageProvider)?.LastCoverage ?? [];
+        foreach (var source in coverage)
+        {
+            var category = Texts.TryGetValue($"Coverage{source.Key}", out var label) ? label : source.Key;
+            var status = Texts.TryGetValue(source.StatusKey, out var statusLabel) ? statusLabel : source.StatusKey;
+            var detail = source.Key == "Wmi" && source.Detail is { } detailText
+                ? string.Format(Texts["WmiCoverageDetail"], detailText.Split(':')[0], detailText.Split(':').Last())
+                : source.IsSupported ? Texts["CoverageSupported"] : Texts["CoverageUnsupported"];
+            CoverageRows.Add(new CoverageViewRow(category, status, source.EntryCount, detail, source.IsSupported));
+        }
+        OnPropertyChanged(nameof(CoverageRows));
+    }
+
+    private void BuildAutorunsComparison(IReadOnlyCollection<AutorunsItem> autoruns)
+    {
+        AutorunsComparison.Clear();
+        var bootLens = Entries.Select(entry => (Entry: entry, Category: AutorunsCategory(entry.Mechanism)))
+            .Where(item => item.Category is not null)
+            .GroupBy(item => item.Category!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Select(item => EntryIdentity(item.Entry)).Where(value => value.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+        var autorunsByCategory = autoruns.GroupBy(item => NormalizeAutorunsCategory(item.Category), StringComparer.OrdinalIgnoreCase)
+            .Where(group => !string.IsNullOrWhiteSpace(group.Key))
+            .ToDictionary(group => group.Key, group => group.Select(AutorunsIdentity).Where(value => value.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+        var categories = bootLens.Keys.Concat(autorunsByCategory.Keys).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase);
+        foreach (var category in categories)
+        {
+            bootLens.TryGetValue(category, out var left);
+            autorunsByCategory.TryGetValue(category, out var right);
+            left ??= [];
+            right ??= [];
+            var shared = left.Intersect(right, StringComparer.OrdinalIgnoreCase).Count();
+            var uiLabel = CategoryLabel(category);
+            AutorunsComparison.Add(new AutorunsComparisonViewRow(uiLabel, left.Count, right.Count, shared, left.Count - shared, right.Count - shared));
+        }
+    }
+
+    private void RebuildAutorunsComparisonIfPresent()
+    {
+        if (_autorunsItems.Count > 0) BuildAutorunsComparison(_autorunsItems);
+    }
+
+    private string CategoryLabel(string category) => Texts.TryGetValue($"Coverage{category.Replace(" ", string.Empty)}", out var label) ? label : category;
+
+    private static string? AutorunsCategory(StartupMechanism mechanism) => mechanism switch
+    {
+        StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce or StartupMechanism.StartupFolder or StartupMechanism.Wmi => "Logon",
+        StartupMechanism.ScheduledTask => "Scheduled Tasks",
+        StartupMechanism.Service => "Services",
+        StartupMechanism.Driver => "Drivers",
+        StartupMechanism.Winlogon => "Winlogon",
+        StartupMechanism.Shell or StartupMechanism.Explorer => "Explorer",
+        StartupMechanism.BootExecute => "Boot Execute",
+        StartupMechanism.AppInit => "AppInit",
+        StartupMechanism.KnownDll => "Known DLLs",
+        StartupMechanism.Codecs => "Codecs",
+        StartupMechanism.ImageHijack => "Image Hijacks",
+        StartupMechanism.Winsock => "Winsock Providers",
+        StartupMechanism.PrintMonitor => "Print Monitors",
+        StartupMechanism.LsaProvider => "LSA Providers",
+        StartupMechanism.NetworkProvider => "Network Providers",
+        StartupMechanism.Office => "Office",
+        StartupMechanism.PackagedApp => "Packaged Apps",
+        _ => null
+    };
+
+    private static string NormalizeAutorunsCategory(string? category)
+    {
+        var key = category?.Trim().Replace('_', ' ') ?? string.Empty;
+        if (key.Contains("scheduled task", StringComparison.OrdinalIgnoreCase) || key.Contains("task scheduler", StringComparison.OrdinalIgnoreCase)) return "Scheduled Tasks";
+        if (key.Contains("logon", StringComparison.OrdinalIgnoreCase) || key.Contains("startup", StringComparison.OrdinalIgnoreCase)) return "Logon";
+        if (key.Contains("service", StringComparison.OrdinalIgnoreCase)) return "Services";
+        if (key.Contains("driver", StringComparison.OrdinalIgnoreCase)) return "Drivers";
+        if (key.Contains("known dll", StringComparison.OrdinalIgnoreCase)) return "Known DLLs";
+        if (key.Contains("boot execute", StringComparison.OrdinalIgnoreCase)) return "Boot Execute";
+        if (key.Contains("image hijack", StringComparison.OrdinalIgnoreCase) || key.Contains("ifeo", StringComparison.OrdinalIgnoreCase)) return "Image Hijacks";
+        if (key.Contains("winsock", StringComparison.OrdinalIgnoreCase)) return "Winsock Providers";
+        if (key.Contains("print monitor", StringComparison.OrdinalIgnoreCase)) return "Print Monitors";
+        if (key.Contains("lsa provider", StringComparison.OrdinalIgnoreCase)) return "LSA Providers";
+        if (key.Contains("network provider", StringComparison.OrdinalIgnoreCase)) return "Network Providers";
+        if (key.Contains("appinit", StringComparison.OrdinalIgnoreCase)) return "AppInit";
+        if (key.Contains("codec", StringComparison.OrdinalIgnoreCase)) return "Codecs";
+        if (key.Contains("explorer", StringComparison.OrdinalIgnoreCase)) return "Explorer";
+        if (key.Contains("winlogon", StringComparison.OrdinalIgnoreCase)) return "Winlogon";
+        if (key.Contains("office", StringComparison.OrdinalIgnoreCase)) return "Office";
+        if (key.Contains("packaged", StringComparison.OrdinalIgnoreCase)) return "Packaged Apps";
+        return key;
+    }
+
+    private static string EntryIdentity(StartupEntry entry) => NormalizeIdentity(entry.ExecutablePath ?? WindowsStartupScanner.ExtractExecutablePath(entry.CommandLine ?? string.Empty) ?? entry.CommandLine ?? string.Empty);
+    private static string AutorunsIdentity(AutorunsItem item) => NormalizeIdentity(item.Path ?? WindowsStartupScanner.ExtractExecutablePath(item.Command ?? string.Empty) ?? item.Command ?? item.Name ?? string.Empty);
+    private static string NormalizeIdentity(string value) => Environment.ExpandEnvironmentVariables(value.Trim().Trim('"').Replace('/', '\\')).TrimEnd('\\');
+
+    private static int FindColumn(IReadOnlyList<string> headers, params string[] names)
+    {
+        for (var index = 0; index < headers.Count; index++)
+            if (names.Any(name => string.Equals(headers[index].Trim(), name, StringComparison.OrdinalIgnoreCase))) return index;
+        return -1;
+    }
+
+    private static string? ReadColumn(IReadOnlyList<string> columns, int index) => index >= 0 && index < columns.Count ? columns[index].Trim() : null;
+
+    private static List<List<string>> ParseCsv(string input)
+    {
+        var rows = new List<List<string>>();
+        var row = new List<string>();
+        var field = new StringBuilder();
+        var quoted = false;
+        for (var index = 0; index < input.Length; index++)
+        {
+            var character = input[index];
+            if (character == '"')
+            {
+                if (quoted && index + 1 < input.Length && input[index + 1] == '"') { field.Append('"'); index++; }
+                else quoted = !quoted;
+            }
+            else if (character == ',' && !quoted) { row.Add(field.ToString()); field.Clear(); }
+            else if ((character == '\r' || character == '\n') && !quoted)
+            {
+                if (character == '\r' && index + 1 < input.Length && input[index + 1] == '\n') index++;
+                row.Add(field.ToString()); field.Clear();
+                if (row.Any(value => !string.IsNullOrWhiteSpace(value))) rows.Add(row);
+                row = [];
+            }
+            else field.Append(character);
+        }
+        if (field.Length > 0 || row.Count > 0)
+        {
+            row.Add(field.ToString());
+            if (row.Any(value => !string.IsNullOrWhiteSpace(value))) rows.Add(row);
+        }
+        return rows;
+    }
+
+    private sealed record AutorunsItem(string? Category, string? Name, string? Path, string? Command);
+    public sealed record CoverageViewRow(string Category, string Status, int Count, string Detail, bool IsSupported);
+    public sealed record AutorunsComparisonViewRow(string Category, int BootLensCount, int AutorunsCount, int SharedCount, int OnlyBootLensCount, int OnlyAutorunsCount);
+
     private void ReplaceEntries(IEnumerable<StartupEntry> entries)
     {
         Entries.Clear();
         foreach (var entry in entries) Entries.Add(entry);
         RebuildRows();
+        RebuildAutorunsComparisonIfPresent();
         OnPropertyChanged(nameof(VisibleEntries));
     }
 
@@ -666,6 +920,11 @@ public partial class MainViewModel : ObservableObject
     private void RebuildRows()
     {
         var selectedId = SelectedEntry?.Id;
+        _duplicateEntryIds.Clear();
+        foreach (var group in Entries.Where(entry => !string.IsNullOrWhiteSpace(entry.ExecutablePath))
+                     .GroupBy(entry => NormalizeIdentity(entry.ExecutablePath!), StringComparer.OrdinalIgnoreCase)
+                     .Where(group => group.Count() > 1))
+            foreach (var entry in group) _duplicateEntryIds.Add(entry.Id);
         EntryRows.Clear();
         foreach (var entry in Entries) EntryRows.Add(new StartupEntryRow(entry, _localization, _analysis, Entries));
         SelectedRow = EntryRows.FirstOrDefault(row => row.Entry.Id == selectedId);
@@ -683,8 +942,11 @@ public partial class MainViewModel : ObservableObject
         "Active" => row.Entry.State is StartupState.Enabled or StartupState.Protected,
         "Disabled" => row.Entry.State == StartupState.Disabled,
         "Broken" => row.Entry.IsBroken || row.Entry.State == StartupState.Broken,
+        "Missing" => row.Entry.IsBroken || IsResolvedFilePath(row.Entry.ExecutablePath) && !File.Exists(row.Entry.ExecutablePath),
+        "Duplicates" => _duplicateEntryIds.Contains(row.Entry.Id),
         "HighImpact" => row.ScoreValue is > 0 and < 45,
-        "Unsigned" => !row.Entry.IsSigned,
+        "Unsigned" => row.Entry.SignatureStatus == SignatureStatus.Unsigned || row.Entry.SignatureStatus == SignatureStatus.NotChecked && !row.Entry.IsSigned,
+        "InvalidSignature" => row.Entry.SignatureStatus == SignatureStatus.Invalid,
         "Microsoft" => row.Entry.IsMicrosoft,
         "ThirdParty" => !row.Entry.IsMicrosoft,
         "Registry" => row.Entry.Mechanism is StartupMechanism.RegistryRun or StartupMechanism.RegistryRunOnce,
@@ -752,7 +1014,40 @@ public partial class MainViewModel : ObservableObject
 
     private static string FormatScore(EfficiencyScore score, IReadOnlyDictionary<string, string> texts) => $"{score.Value}/100";
 
-    private static string FormatBootTimestamp() => (DateTimeOffset.UtcNow - TimeSpan.FromMilliseconds(Environment.TickCount64)).ToLocalTime().ToString("g");
+    private string ExtractArguments(StartupEntry entry)
+    {
+        var command = entry.CommandLine?.Trim();
+        var path = entry.ExecutablePath;
+        if (string.IsNullOrWhiteSpace(command) || string.IsNullOrWhiteSpace(path)) return Texts["NotAvailable"];
+        int offset;
+        if (command.StartsWith('"'))
+        {
+            var end = command.IndexOf('"', 1);
+            offset = end >= 0 ? end + 1 : path.Length;
+        }
+        else
+        {
+            var index = command.IndexOf(path, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0) offset = index + path.Length;
+            else
+            {
+                var executableEnd = command.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+                offset = executableEnd >= 0 ? executableEnd + 4 : Math.Min(path.Length, command.Length);
+            }
+        }
+        var arguments = command[Math.Min(offset, command.Length)..].Trim();
+        return arguments.Length == 0 ? Texts["NotAvailable"] : arguments;
+    }
+
+    private static bool IsResolvedFilePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        if (Path.IsPathRooted(path)) return true;
+        return path.Contains(".exe", StringComparison.OrdinalIgnoreCase)
+            || path.Contains(".dll", StringComparison.OrdinalIgnoreCase)
+            || path.Contains(".sys", StringComparison.OrdinalIgnoreCase)
+            || path.Contains(".lnk", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static string ProcessName(StartupEntry entry)
     {

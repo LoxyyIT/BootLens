@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Startup measurements now read the real Windows boot duration from Diagnostics-Performance event 100 and stay unavailable when the event is missing.
+- Startup details distinguish unsigned files from invalid or unavailable Authenticode verification and show resolved file and argument information.
+- Added missing-file and duplicate-path filters and optional 15-minute change checks while the app is open.
+- Added WMI startup-command discovery, a source-coverage page and local Autoruns CSV comparison by category and executable path.
+- Added SQLite migration support for the richer signature state and clarified current Windows compatibility limits.
+
 ## 0.2.5 - 2026-09-20
 
 - Signature status now uses Windows Authenticode verification instead of always reporting files as unsigned.

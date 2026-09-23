@@ -35,6 +35,15 @@ public enum StartupState
     Unknown
 }
 
+public enum SignatureStatus
+{
+    NotChecked,
+    Valid,
+    Unsigned,
+    Invalid,
+    Unavailable
+}
+
 public enum ScoreConfidence
 {
     Low,
@@ -67,6 +76,8 @@ public sealed record StartupEntry
     public string? Version { get; init; }
     public string? Sha256 { get; init; }
     public bool IsSigned { get; init; }
+    public SignatureStatus SignatureStatus { get; init; } = SignatureStatus.NotChecked;
+    public string? SignatureDetail { get; init; }
     public bool IsMicrosoft { get; init; }
     public bool IsCritical { get; init; }
     public bool IsBroken { get; init; }
@@ -87,6 +98,10 @@ public sealed record BootMeasurement
     public string? Source { get; init; }
     public string ConfigurationFingerprint { get; init; } = string.Empty;
 }
+
+public sealed record ScanSourceCoverage(string Key, int EntryCount, bool IsSupported, string StatusKey, string? Detail = null);
+
+public sealed record CoverageComparisonRow(string Category, int BootLensCount, int AutorunsCount, int SharedCount, int OnlyBootLensCount, int OnlyAutorunsCount);
 
 public sealed record Snapshot
 {

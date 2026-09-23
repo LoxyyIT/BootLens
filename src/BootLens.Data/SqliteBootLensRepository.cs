@@ -23,7 +23,7 @@ public sealed class SqliteBootLensRepository : IBootLensRepository
         command.CommandText = """
             PRAGMA journal_mode=WAL;
             CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER NOT NULL PRIMARY KEY);
-            CREATE TABLE IF NOT EXISTS startup_entries (id TEXT NOT NULL PRIMARY KEY, display_name TEXT NOT NULL, mechanism INTEGER NOT NULL, state INTEGER NOT NULL, publisher TEXT, description TEXT, executable_path TEXT, command_line TEXT, identifier TEXT, version TEXT, sha256 TEXT, is_signed INTEGER NOT NULL, is_microsoft INTEGER NOT NULL, is_critical INTEGER NOT NULL, is_broken INTEGER NOT NULL, first_seen_utc TEXT NOT NULL, last_seen_utc TEXT NOT NULL, cpu_ms REAL, disk_io_bytes REAL, peak_memory_bytes REAL, trigger TEXT, source_location TEXT);
+            CREATE TABLE IF NOT EXISTS startup_entries (id TEXT NOT NULL PRIMARY KEY, display_name TEXT NOT NULL, mechanism INTEGER NOT NULL, state INTEGER NOT NULL, publisher TEXT, description TEXT, executable_path TEXT, command_line TEXT, identifier TEXT, version TEXT, sha256 TEXT, is_signed INTEGER NOT NULL, is_microsoft INTEGER NOT NULL, is_critical INTEGER NOT NULL, is_broken INTEGER NOT NULL, first_seen_utc TEXT NOT NULL, last_seen_utc TEXT NOT NULL, cpu_ms REAL, disk_io_bytes REAL, peak_memory_bytes REAL, trigger TEXT, source_location TEXT, signature_status INTEGER NOT NULL DEFAULT 0, signature_detail TEXT);
             CREATE TABLE IF NOT EXISTS snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_utc TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS snapshot_entries (snapshot_id INTEGER NOT NULL, entry_id TEXT NOT NULL, display_name TEXT NOT NULL, mechanism INTEGER NOT NULL, state INTEGER NOT NULL, publisher TEXT, executable_path TEXT, command_line TEXT, is_signed INTEGER NOT NULL, is_microsoft INTEGER NOT NULL, is_critical INTEGER NOT NULL, is_broken INTEGER NOT NULL, PRIMARY KEY(snapshot_id, entry_id));
             CREATE TABLE IF NOT EXISTS startup_changes (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id TEXT NOT NULL, change_type TEXT NOT NULL, summary TEXT NOT NULL, detected_utc TEXT NOT NULL, display_name TEXT, mechanism INTEGER, previous_state INTEGER, current_state INTEGER, previous_path TEXT, current_path TEXT, previous_command TEXT, current_command TEXT, publisher TEXT, source_location TEXT, verified INTEGER NOT NULL DEFAULT 0, result_message TEXT);
@@ -34,6 +34,30 @@ public sealed class SqliteBootLensRepository : IBootLensRepository
             """;
         await command.ExecuteNonQueryAsync(cancellationToken);
         await EnsureStartupChangeColumnsAsync(connection, cancellationToken);
+        await EnsureStartupEntryColumnsAsync(connection, cancellationToken);
+    }
+
+    private static async Task EnsureStartupEntryColumnsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using (var tableInfo = connection.CreateCommand())
+        {
+            tableInfo.CommandText = "PRAGMA table_info(startup_entries)";
+            await using var reader = await tableInfo.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken)) existing.Add(reader.GetString(1));
+        }
+        if (!existing.Contains("signature_status"))
+        {
+            await using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE startup_entries ADD COLUMN signature_status INTEGER NOT NULL DEFAULT 0";
+            await alter.ExecuteNonQueryAsync(cancellationToken);
+        }
+        if (!existing.Contains("signature_detail"))
+        {
+            await using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE startup_entries ADD COLUMN signature_detail TEXT";
+            await alter.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     private static async Task EnsureStartupChangeColumnsAsync(SqliteConnection connection, CancellationToken cancellationToken)
@@ -74,7 +98,7 @@ public sealed class SqliteBootLensRepository : IBootLensRepository
         {
             await using var command = connection.CreateCommand();
             command.Transaction = transaction;
-            command.CommandText = "INSERT INTO startup_entries VALUES ($id,$name,$mechanism,$state,$publisher,$description,$path,$command,$identifier,$version,$sha,$signed,$microsoft,$critical,$broken,$first,$last,$cpu,$io,$memory,$trigger,$source)";
+            command.CommandText = "INSERT INTO startup_entries (id,display_name,mechanism,state,publisher,description,executable_path,command_line,identifier,version,sha256,is_signed,is_microsoft,is_critical,is_broken,first_seen_utc,last_seen_utc,cpu_ms,disk_io_bytes,peak_memory_bytes,trigger,source_location,signature_status,signature_detail) VALUES ($id,$name,$mechanism,$state,$publisher,$description,$path,$command,$identifier,$version,$sha,$signed,$microsoft,$critical,$broken,$first,$last,$cpu,$io,$memory,$trigger,$source,$signature_status,$signature_detail)";
             AddEntryParameters(command, entry);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -230,12 +254,12 @@ public sealed class SqliteBootLensRepository : IBootLensRepository
 
     private static void AddEntryParameters(SqliteCommand command, StartupEntry entry)
     {
-        command.Parameters.AddWithValue("$id", entry.Id); command.Parameters.AddWithValue("$name", entry.DisplayName); command.Parameters.AddWithValue("$mechanism", (int)entry.Mechanism); command.Parameters.AddWithValue("$state", (int)entry.State); command.Parameters.AddWithValue("$publisher", (object?)entry.Publisher ?? DBNull.Value); command.Parameters.AddWithValue("$description", (object?)entry.Description ?? DBNull.Value); command.Parameters.AddWithValue("$path", (object?)entry.ExecutablePath ?? DBNull.Value); command.Parameters.AddWithValue("$command", (object?)entry.CommandLine ?? DBNull.Value); command.Parameters.AddWithValue("$identifier", (object?)entry.Identifier ?? DBNull.Value); command.Parameters.AddWithValue("$version", (object?)entry.Version ?? DBNull.Value); command.Parameters.AddWithValue("$sha", (object?)entry.Sha256 ?? DBNull.Value); command.Parameters.AddWithValue("$signed", entry.IsSigned ? 1 : 0); command.Parameters.AddWithValue("$microsoft", entry.IsMicrosoft ? 1 : 0); command.Parameters.AddWithValue("$critical", entry.IsCritical ? 1 : 0); command.Parameters.AddWithValue("$broken", entry.IsBroken ? 1 : 0); command.Parameters.AddWithValue("$first", entry.FirstSeenUtc.ToString("O")); command.Parameters.AddWithValue("$last", entry.LastSeenUtc.ToString("O")); command.Parameters.AddWithValue("$cpu", (object?)entry.CpuMilliseconds ?? DBNull.Value); command.Parameters.AddWithValue("$io", (object?)entry.DiskIoBytes ?? DBNull.Value); command.Parameters.AddWithValue("$memory", (object?)entry.PeakMemoryBytes ?? DBNull.Value); command.Parameters.AddWithValue("$trigger", (object?)entry.Trigger ?? DBNull.Value); command.Parameters.AddWithValue("$source", (object?)entry.SourceLocation ?? DBNull.Value);
+        command.Parameters.AddWithValue("$id", entry.Id); command.Parameters.AddWithValue("$name", entry.DisplayName); command.Parameters.AddWithValue("$mechanism", (int)entry.Mechanism); command.Parameters.AddWithValue("$state", (int)entry.State); command.Parameters.AddWithValue("$publisher", (object?)entry.Publisher ?? DBNull.Value); command.Parameters.AddWithValue("$description", (object?)entry.Description ?? DBNull.Value); command.Parameters.AddWithValue("$path", (object?)entry.ExecutablePath ?? DBNull.Value); command.Parameters.AddWithValue("$command", (object?)entry.CommandLine ?? DBNull.Value); command.Parameters.AddWithValue("$identifier", (object?)entry.Identifier ?? DBNull.Value); command.Parameters.AddWithValue("$version", (object?)entry.Version ?? DBNull.Value); command.Parameters.AddWithValue("$sha", (object?)entry.Sha256 ?? DBNull.Value); command.Parameters.AddWithValue("$signed", entry.IsSigned ? 1 : 0); command.Parameters.AddWithValue("$microsoft", entry.IsMicrosoft ? 1 : 0); command.Parameters.AddWithValue("$critical", entry.IsCritical ? 1 : 0); command.Parameters.AddWithValue("$broken", entry.IsBroken ? 1 : 0); command.Parameters.AddWithValue("$first", entry.FirstSeenUtc.ToString("O")); command.Parameters.AddWithValue("$last", entry.LastSeenUtc.ToString("O")); command.Parameters.AddWithValue("$cpu", (object?)entry.CpuMilliseconds ?? DBNull.Value); command.Parameters.AddWithValue("$io", (object?)entry.DiskIoBytes ?? DBNull.Value); command.Parameters.AddWithValue("$memory", (object?)entry.PeakMemoryBytes ?? DBNull.Value); command.Parameters.AddWithValue("$trigger", (object?)entry.Trigger ?? DBNull.Value); command.Parameters.AddWithValue("$source", (object?)entry.SourceLocation ?? DBNull.Value); command.Parameters.AddWithValue("$signature_status", (int)entry.SignatureStatus); command.Parameters.AddWithValue("$signature_detail", (object?)entry.SignatureDetail ?? DBNull.Value);
     }
 
     private static StartupEntry ReadEntry(SqliteDataReader reader) => new()
     {
-        Id = reader.GetString(0), DisplayName = reader.GetString(1), Mechanism = (StartupMechanism)reader.GetInt32(2), State = (StartupState)reader.GetInt32(3), Publisher = ReadString(reader, 4), Description = ReadString(reader, 5), ExecutablePath = ReadString(reader, 6), CommandLine = ReadString(reader, 7), Identifier = ReadString(reader, 8), Version = ReadString(reader, 9), Sha256 = ReadString(reader, 10), IsSigned = reader.GetInt32(11) == 1, IsMicrosoft = reader.GetInt32(12) == 1, IsCritical = reader.GetInt32(13) == 1, IsBroken = reader.GetInt32(14) == 1, FirstSeenUtc = DateTimeOffset.Parse(reader.GetString(15)), LastSeenUtc = DateTimeOffset.Parse(reader.GetString(16)), CpuMilliseconds = ReadDouble(reader, 17), DiskIoBytes = ReadDouble(reader, 18), PeakMemoryBytes = ReadDouble(reader, 19), Trigger = ReadString(reader, 20), SourceLocation = ReadString(reader, 21)
+        Id = reader.GetString(0), DisplayName = reader.GetString(1), Mechanism = (StartupMechanism)reader.GetInt32(2), State = (StartupState)reader.GetInt32(3), Publisher = ReadString(reader, 4), Description = ReadString(reader, 5), ExecutablePath = ReadString(reader, 6), CommandLine = ReadString(reader, 7), Identifier = ReadString(reader, 8), Version = ReadString(reader, 9), Sha256 = ReadString(reader, 10), IsSigned = reader.GetInt32(11) == 1, IsMicrosoft = reader.GetInt32(12) == 1, IsCritical = reader.GetInt32(13) == 1, IsBroken = reader.GetInt32(14) == 1, FirstSeenUtc = DateTimeOffset.Parse(reader.GetString(15)), LastSeenUtc = DateTimeOffset.Parse(reader.GetString(16)), CpuMilliseconds = ReadDouble(reader, 17), DiskIoBytes = ReadDouble(reader, 18), PeakMemoryBytes = ReadDouble(reader, 19), Trigger = ReadString(reader, 20), SourceLocation = ReadString(reader, 21), SignatureStatus = (SignatureStatus)reader.GetInt32(22), SignatureDetail = ReadString(reader, 23)
     };
 
     private static string? ReadString(SqliteDataReader reader, int index) => reader.IsDBNull(index) ? null : reader.GetString(index);

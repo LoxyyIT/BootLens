@@ -25,6 +25,7 @@ public partial class App : Application
         collection.AddSingleton<ChangeDetection>();
         collection.AddSingleton<IBootLensRepository>(_ => new SqliteBootLensRepository());
         collection.AddSingleton<IStartupScanner, WindowsStartupScanner>();
+        collection.AddSingleton<IBootMeasurementProvider, WindowsBootMeasurementProvider>();
         collection.AddSingleton<IStartupModifier, WindowsStartupModifier>();
         collection.AddSingleton<MainViewModel>();
         collection.AddSingleton<MainWindow>();

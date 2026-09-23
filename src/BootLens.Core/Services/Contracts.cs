@@ -7,6 +7,16 @@ public interface IStartupScanner
     Task<IReadOnlyList<StartupEntry>> ScanAsync(CancellationToken cancellationToken = default);
 }
 
+public interface IScanCoverageProvider
+{
+    IReadOnlyList<ScanSourceCoverage> LastCoverage { get; }
+}
+
+public interface IBootMeasurementProvider
+{
+    Task<BootMeasurement?> GetLatestAsync(IReadOnlyCollection<StartupEntry> entries, CancellationToken cancellationToken = default);
+}
+
 public interface IStartupModifier
 {
     Task<OperationResult> DisableAsync(StartupEntry entry, CancellationToken cancellationToken = default);
