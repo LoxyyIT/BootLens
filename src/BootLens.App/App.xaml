@@ -9,17 +9,17 @@
             <local:ZeroToVisibilityConverter x:Key="ZeroToVisibility" />
             <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibility" />
             <local:BooleanToActiveBrushConverter x:Key="BooleanToActiveBrush" />
-            <SolidColorBrush x:Key="WindowBackground" Color="#F7F5FC" />
+            <SolidColorBrush x:Key="WindowBackground" Color="#F6F7FB" />
             <SolidColorBrush x:Key="PanelBackground" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="PanelMuted" Color="#F3F0FA" />
-            <SolidColorBrush x:Key="TextPrimary" Color="#241D36" />
-            <SolidColorBrush x:Key="TextSecondary" Color="#756E85" />
-            <SolidColorBrush x:Key="BorderColor" Color="#E6E0F0" />
+            <SolidColorBrush x:Key="PanelMuted" Color="#F7F7FB" />
+            <SolidColorBrush x:Key="TextPrimary" Color="#202235" />
+            <SolidColorBrush x:Key="TextSecondary" Color="#687084" />
+            <SolidColorBrush x:Key="BorderColor" Color="#E5E7EF" />
             <SolidColorBrush x:Key="AccentColor" Color="#7C3AED" />
-            <SolidColorBrush x:Key="AccentSoft" Color="#F0E8FF" />
+            <SolidColorBrush x:Key="AccentSoft" Color="#F2EDFF" />
             <SolidColorBrush x:Key="WarningSoft" Color="#FFF5DF" />
             <SolidColorBrush x:Key="DangerSoft" Color="#FFE9EC" />
-            <DropShadowEffect x:Key="SoftShadow" BlurRadius="22" Direction="270" ShadowDepth="5" Opacity="0.12" Color="#7D6C9A" />
+            <DropShadowEffect x:Key="SoftShadow" BlurRadius="18" Direction="270" ShadowDepth="2" Opacity="0.07" Color="#59617A" />
             <Style TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
                 <Setter Property="FontFamily" Value="Segoe UI" />
@@ -93,7 +93,7 @@
                 <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="Padding" Value="12,9" />
+                <Setter Property="Padding" Value="12,8" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
@@ -158,7 +158,7 @@
             </Style>
             <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                 <Setter Property="Background" Value="{DynamicResource AccentColor}" />
-                <Setter Property="Foreground" Value="#11170D" />
+                <Setter Property="Foreground" Value="#FFFFFF" />
                 <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Padding" Value="16,10" />
                 <Setter Property="Template">
@@ -166,8 +166,8 @@
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="PrimaryBorder" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource AccentColor}" BorderThickness="1" CornerRadius="10" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
                             <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="PrimaryBorder" Property="Background" Value="#8B5CF6" /><Setter TargetName="PrimaryBorder" Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX="1.015" ScaleY="1.015" /></Setter.Value></Setter></Trigger>
-                                <Trigger Property="IsPressed" Value="True"><Setter TargetName="PrimaryBorder" Property="Background" Value="#6D28D9" /></Trigger>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="PrimaryBorder" Property="Background" Value="#6D28D9" /></Trigger>
+                                <Trigger Property="IsPressed" Value="True"><Setter TargetName="PrimaryBorder" Property="Background" Value="#5B21B6" /></Trigger>
                                 <Trigger Property="IsEnabled" Value="False"><Setter TargetName="PrimaryBorder" Property="Opacity" Value="0.42" /></Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -179,11 +179,11 @@
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
-                <Setter Property="Padding" Value="10,7" />
-                <Setter Property="Margin" Value="3,3,3,4" />
-                <Setter Property="FontSize" Value="10" />
+                <Setter Property="Padding" Value="8,5" />
+                <Setter Property="Margin" Value="2,2" />
+                <Setter Property="FontSize" Value="9" />
                 <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="MinHeight" Value="28" />
                 <Setter Property="Cursor" Value="Hand" />
                 <Setter Property="Template">
                     <Setter.Value>
@@ -225,8 +225,8 @@
                 <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderColor}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="16" />
-                <Setter Property="Padding" Value="22" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="Padding" Value="20" />
                 <Setter Property="Effect" Value="{DynamicResource SoftShadow}" />
             </Style>
             <Style x:Key="MetricCard" TargetType="Border" BasedOn="{StaticResource Card}">
@@ -266,12 +266,12 @@
             <Style TargetType="ListViewItem">
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="Padding" Value="0" />
-                <Setter Property="Margin" Value="0,2" />
+                <Setter Property="Margin" Value="0,1" />
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ListViewItem">
-                            <Border x:Name="RowBorder" Background="{TemplateBinding Background}" CornerRadius="10" Padding="12,10"><ContentPresenter /></Border>
+                            <Border x:Name="RowBorder" Background="{TemplateBinding Background}" CornerRadius="8" Padding="8,5"><ContentPresenter /></Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="RowBorder" Property="Background" Value="{DynamicResource PanelMuted}" /></Trigger>
                                 <Trigger Property="IsSelected" Value="True"><Setter TargetName="RowBorder" Property="Background" Value="{DynamicResource AccentSoft}" /></Trigger>

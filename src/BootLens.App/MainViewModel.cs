@@ -65,7 +65,7 @@ public partial class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(LatestBootHint));
             foreach (var change in RecentChanges) change.RefreshLocalization();
             NotifySelectedEntry();
-            OnPropertyChanged(nameof(VisibleEntries));
+            NotifyVisibleEntriesChanged();
             RefreshCoverageRows();
             if (_autorunsItems.Count > 0) BuildAutorunsComparison(_autorunsItems);
         };
@@ -98,6 +98,11 @@ public partial class MainViewModel : ObservableObject
             };
         }
     }
+    public int VisibleEntryCount => VisibleEntries.Count();
+    public bool HasVisibleEntries => VisibleEntryCount > 0;
+    public bool HasSearchText => !string.IsNullOrWhiteSpace(SearchText);
+    public string VisibleEntriesSummary => string.Format(Texts["ShowingEntries"], VisibleEntryCount, EntryRows.Count);
+    public string VisibleEntriesEmptyMessage => EntryRows.Count == 0 ? Texts["NoEntriesHint"] : Texts["NoFilterResults"];
     public IReadOnlyList<string> Languages => ["en", "it", "es", "fr"];
     public IReadOnlyList<string> Themes => ["Light"];
     public IReadOnlyList<string> Pages => ["Overview", "Startup", "Timeline", "BootHistory", "Changes", "Snapshots", "Coverage", "Advanced", "Settings"];
@@ -134,6 +139,8 @@ public partial class MainViewModel : ObservableObject
     public bool IsCoveragePage => SelectedPage == "Coverage";
     public bool IsMissingFilter => ActiveFilter == "Missing";
     public bool IsDuplicateFilter => ActiveFilter == "Duplicates";
+    public bool HasSelectedEntry => SelectedEntry is not null;
+    public bool HasActiveFilter => ActiveFilter != "All";
     private readonly HashSet<string> _duplicateEntryIds = new(StringComparer.OrdinalIgnoreCase);
 
     [ObservableProperty] private StartupEntry? selectedEntry;
@@ -160,6 +167,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string medianBoot = string.Empty;
     [ObservableProperty] private string trend = string.Empty;
     [ObservableProperty] private bool isAdvancedMode;
+    [ObservableProperty] private bool areMoreFiltersVisible;
     [ObservableProperty] private bool confirmActionsEnabled = true;
     [ObservableProperty] private bool autoScanOnLaunchEnabled;
     [ObservableProperty] private bool snapshotBeforeChangesEnabled = true;
@@ -232,7 +240,7 @@ public partial class MainViewModel : ObservableObject
         await UpdateSummaryAsync();
         RefreshCoverageRows();
         IsInitialized = true;
-        StatusText = entries.Count == 0 ? Texts["NoEntriesHint"] : $"{entries.Count} {Texts["ActiveItems"].ToLowerInvariant()}";
+        StatusText = entries.Count == 0 ? Texts["NoEntriesHint"] : $"{entries.Count} {Texts["EntriesFound"]}";
         if (AutoScanOnLaunchEnabled) await ScanAsync();
         await CaptureBootMeasurementAsync(Entries.ToArray());
         if (MonitorStartupChangesEnabled) _monitorTimer.Start();
@@ -275,7 +283,7 @@ public partial class MainViewModel : ObservableObject
             RefreshCoverageRows();
             StatusText = background && changes.Count > 0
                 ? string.Format(Texts["MonitorChangesDetected"], changes.Count, DateTime.Now.ToString("t"))
-                : $"{current.Count} {Texts["ActiveItems"].ToLowerInvariant()} · {DateTime.Now:t}";
+                : $"{current.Count} {Texts["EntriesFound"]} · {DateTime.Now:t}";
         }
         catch (OperationCanceledException) { StatusText = Texts["Cancel"]; }
         catch (Exception exception) { StatusText = exception.Message; }
@@ -597,6 +605,7 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedEntryChanged(StartupEntry? value)
     {
+        OnPropertyChanged(nameof(HasSelectedEntry));
         NotifySelectedEntry();
         ToggleSelectedCommand.NotifyCanExecuteChanged();
     }
@@ -620,10 +629,15 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsCoveragePage));
     }
 
-    partial void OnSearchTextChanged(string value) => OnPropertyChanged(nameof(VisibleEntries));
+    partial void OnSearchTextChanged(string value)
+    {
+        NotifyVisibleEntriesChanged();
+        OnPropertyChanged(nameof(HasSearchText));
+    }
     partial void OnActiveFilterChanged(string value)
     {
-        OnPropertyChanged(nameof(VisibleEntries));
+        NotifyVisibleEntriesChanged();
+        OnPropertyChanged(nameof(HasActiveFilter));
         OnPropertyChanged(nameof(IsAllFilter));
         OnPropertyChanged(nameof(IsActiveFilter));
         OnPropertyChanged(nameof(IsDisabledFilter));
@@ -645,7 +659,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsMissingFilter));
         OnPropertyChanged(nameof(IsDuplicateFilter));
     }
-    partial void OnSortModeChanged(string value) => OnPropertyChanged(nameof(VisibleEntries));
+    partial void OnSortModeChanged(string value) => NotifyVisibleEntriesChanged();
     partial void OnIsBusyChanged(bool value)
     {
         OnPropertyChanged(nameof(CanChangeSelected));
@@ -654,7 +668,7 @@ public partial class MainViewModel : ObservableObject
     partial void OnConfirmActionsEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(ConfirmActionsKey, value ? "true" : "false"); }
     partial void OnAutoScanOnLaunchEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(AutoScanOnLaunchKey, value ? "true" : "false"); }
     partial void OnSnapshotBeforeChangesEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(SnapshotBeforeChangesKey, value ? "true" : "false"); }
-    partial void OnKeepSystemItemsBottomEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(KeepSystemItemsBottomKey, value ? "true" : "false"); OnPropertyChanged(nameof(VisibleEntries)); }
+    partial void OnKeepSystemItemsBottomEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(KeepSystemItemsBottomKey, value ? "true" : "false"); NotifyVisibleEntriesChanged(); }
     partial void OnCheckUpdatesOnLaunchEnabledChanged(bool value) { if (!_loadingSettings) _ = _repository.SetSettingAsync(CheckUpdatesOnLaunchKey, value ? "true" : "false"); }
     partial void OnMonitorStartupChangesEnabledChanged(bool value)
     {
@@ -693,6 +707,15 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedEntryScore));
         OnPropertyChanged(nameof(CanChangeSelected));
         OnPropertyChanged(nameof(SelectedActionText));
+    }
+
+    private void NotifyVisibleEntriesChanged()
+    {
+        OnPropertyChanged(nameof(VisibleEntries));
+        OnPropertyChanged(nameof(VisibleEntryCount));
+        OnPropertyChanged(nameof(HasVisibleEntries));
+        OnPropertyChanged(nameof(VisibleEntriesSummary));
+        OnPropertyChanged(nameof(VisibleEntriesEmptyMessage));
     }
 
     private async Task UpdateSummaryAsync()
@@ -888,7 +911,7 @@ public partial class MainViewModel : ObservableObject
         foreach (var entry in entries) Entries.Add(entry);
         RebuildRows();
         RebuildAutorunsComparisonIfPresent();
-        OnPropertyChanged(nameof(VisibleEntries));
+        NotifyVisibleEntriesChanged();
     }
 
     private void AddRecentChange(StartupChange change)
@@ -928,6 +951,7 @@ public partial class MainViewModel : ObservableObject
         EntryRows.Clear();
         foreach (var entry in Entries) EntryRows.Add(new StartupEntryRow(entry, _localization, _analysis, Entries));
         SelectedRow = EntryRows.FirstOrDefault(row => row.Entry.Id == selectedId);
+        NotifyVisibleEntriesChanged();
     }
 
     private bool MatchesSearch(StartupEntryRow row)
@@ -969,7 +993,7 @@ public partial class MainViewModel : ObservableObject
         Entries[index] = updated;
         if (SelectedEntry?.Id == entry.Id) SelectedEntry = updated;
         RebuildRows();
-        OnPropertyChanged(nameof(VisibleEntries));
+        NotifyVisibleEntriesChanged();
         NotifySelectedEntry();
     }
 
@@ -1106,6 +1130,11 @@ public partial class MainViewModel : ObservableObject
 
     public sealed class StartupEntryRow(StartupEntry entry, LocalizationService localization, StartupAnalysisService analysis, IReadOnlyCollection<StartupEntry> allEntries)
     {
+        private static readonly Brush EnabledBrush = CreateStateBrush(34, 163, 89);
+        private static readonly Brush DisabledBrush = CreateStateBrush(126, 135, 153);
+        private static readonly Brush ProtectedBrush = CreateStateBrush(58, 123, 213);
+        private static readonly Brush ReviewBrush = CreateStateBrush(205, 139, 24);
+        private static readonly Brush BrokenBrush = CreateStateBrush(214, 69, 69);
         public StartupEntry Entry { get; } = entry;
         public string DisplayName => Entry.DisplayName;
         public string ProcessName => MainViewModel.ProcessName(Entry);
@@ -1115,6 +1144,14 @@ public partial class MainViewModel : ObservableObject
         public string Publisher => Entry.Publisher ?? localization.Get("UnknownPublisher");
         public string Mechanism => localization.Get(MechanismKey(Entry.Mechanism));
         public string State => localization.Get(StateKey(Entry.State));
+        public Brush StateBrush => Entry.State switch
+        {
+            StartupState.Enabled => EnabledBrush,
+            StartupState.Disabled => DisabledBrush,
+            StartupState.Protected => ProtectedBrush,
+            StartupState.Broken => BrokenBrush,
+            _ => ReviewBrush
+        };
         public int ScoreValue => analysis.Analyze(Entry, null, allEntries.ToArray()).Efficiency.Value;
         public string Score => $"{ScoreValue}/100";
         public string Trust => Entry.IsMicrosoft ? localization.Get("Microsoft") : Entry.IsSigned ? localization.Get("PublisherVerified") : localization.Get("SignatureUnverified");
@@ -1146,6 +1183,13 @@ public partial class MainViewModel : ObservableObject
             _ when Entry.IsMicrosoft => "⊞",
             _ => "⌁"
         };
+
+        private static Brush CreateStateBrush(byte red, byte green, byte blue)
+        {
+            var brush = new SolidColorBrush(Color.FromRgb(red, green, blue));
+            brush.Freeze();
+            return brush;
+        }
     }
 
     private sealed class TextDictionary(LocalizationService service) : IReadOnlyDictionary<string, string>

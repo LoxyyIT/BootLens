@@ -1,10 +1,10 @@
 #define AppName "BootLens"
 #define AppExeName "BootLens.exe"
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.2.6"
 #endif
 #ifndef PortableDir
-  #define PortableDir "..\artifacts\BootLens-0.1.0-win-x64"
+  #define PortableDir "..\artifacts\BootLens-0.2.6-win-x64"
 #endif
 [Setup]
 AppId={{F4A11A8E-0D37-4A70-9C06-BOOTLENS0001}

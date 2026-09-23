@@ -1,12 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.2.6 - 2026-09-23
 
 - Startup measurements now read the real Windows boot duration from Diagnostics-Performance event 100 and stay unavailable when the event is missing.
 - Startup details distinguish unsigned files from invalid or unavailable Authenticode verification and show resolved file and argument information.
 - Added missing-file and duplicate-path filters and optional 15-minute change checks while the app is open.
 - Added WMI startup-command discovery, a source-coverage page and local Autoruns CSV comparison by category and executable path.
 - Added SQLite migration support for the richer signature state and clarified current Windows compatibility limits.
+- Refined the main workspace with denser entry rows, grouped filters, clearer search and sort controls, and an explicit empty selection state.
+- Updated the native SQLite bundle to 2.1.13 and removed the warning suppression for its previous vulnerable version.
 
 ## 0.2.5 - 2026-09-20
 
@@ -53,10 +55,3 @@
 - First public source release with the WPF app, local scanner, reports, snapshots and startup change confirmation.
 - Portable Windows x64 package published separately on GitHub Releases.
 - Community functions remain disabled and are marked Coming soon.
-
-## Unreleased
-
-- Fondazione WPF/MVVM .NET 10.
-- Scanner offline Registry, Startup folder, servizi e attività pianificate.
-- SQLite, primo avvio con consenso, quattro lingue, scoring, change detection ed export.
-- Backend Community locale self-hostable con health check e Docker Compose.
